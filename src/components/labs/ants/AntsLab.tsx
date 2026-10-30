@@ -5,19 +5,24 @@ import LabShell from "@/components/LabShell";
 import Crunchy from "@/components/Crunchy";
 import Sheet from "@/components/Sheet";
 import { LockIcon, useAccess } from "@/components/access/AccessProvider";
-import { VIDEO_SETUP, World, decodeSetup, encodeSetup, type Setup } from "./engine";
+import { ANT_COLORS, VIDEO_SETUP, World, decodeSetup, encodeSetup, type Setup } from "./engine";
 import { AntView } from "./view";
 import { Clicker } from "./sound";
+import { captions, rateAt } from "./story";
+import RulePill from "./RulePill";
 import SettingsPanel from "./SettingsPanel";
 
 type Speed = "auto" | number;
 
 const FREE_SPEEDS = [10, 100, 1000, 10000];
 const FULL_SPEEDS = [100000, 1000000];
+const GOLD = "#FFD166";
 const fmt = (n: number) => n.toLocaleString("en-US");
 const label = (s: Speed) => (s === "auto" ? "Auto" : s >= 1e6 ? "1M/s" : s >= 1000 ? `${s / 1000}K/s` : `${s}/s`);
 const same = (a: Setup, b: Setup) => JSON.stringify(a) === JSON.stringify(b);
 const noop = () => () => {};
+const u = (n: number) => `calc(var(--sw) * ${n} / 1080)`;
+const SHADOW = "0 0.06em 0.35em rgba(0,0,0,0.55)";
 
 export default function AntsLab() {
   const { unlocked, upsell, flag, loading } = useAccess();
@@ -26,9 +31,13 @@ export default function AntsLab() {
   const viewRef = useRef<AntView | null>(null);
   const worldRef = useRef<World | null>(null);
   const clicker = useRef<Clicker | null>(null);
-  const stepEl = useRef<HTMLSpanElement>(null);
-  const litEl = useRef<HTMLSpanElement>(null);
-  const st = useRef({ running: false, speed: "auto" as Speed, acc: 0, runTime: 0, peak: 0, keepGoing: false, said: new Set<string>(), video: true, sound: false });
+  const introEl = useRef<HTMLDivElement>(null);
+  const pillEls = useRef<(HTMLDivElement | null)[]>([null, null]);
+  const capEls = useRef<Record<string, HTMLParagraphElement | null>>({});
+  const stepEl = useRef<HTMLParagraphElement>(null);
+  const litEl = useRef<HTMLParagraphElement>(null);
+  const counterEl = useRef<HTMLDivElement>(null);
+  const st = useRef({ running: false, speed: "auto" as Speed, acc: 0, runTime: 0, peak: 0, keepGoing: false, video: true, sound: false, lastStep: 0, hideCounter: true });
 
   const search = useSyncExternalStore(noop, () => window.location.search, () => "");
   const sharedSetup = useMemo(() => {
@@ -41,6 +50,8 @@ export default function AntsLab() {
   const shared = chosen === null && sharedSetup !== null && allowShared;
   const blockedShare = chosen === null && sharedSetup !== null && !allowShared && !loading;
   const setup = chosen ?? (shared && sharedSetup ? sharedSetup : VIDEO_SETUP);
+  const isVideo = same(setup, VIDEO_SETUP);
+
   const [version, setVersion] = useState(0);
   const [running, setRunning] = useState(false);
   const [speed, setSpeed] = useState<Speed>("auto");
@@ -53,17 +64,15 @@ export default function AntsLab() {
   const [home, setHome] = useState(0);
   const [edge, setEdge] = useState(false);
   const [follow, setFollow] = useState(true);
-  const [caption, setCaption] = useState<string | null>(null);
   const [placing, setPlacing] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [sw, setSw] = useState(390);
 
-  const isVideo = same(setup, VIDEO_SETUP);
   const askHunch = !hunchDone && isVideo && sharedSetup === null;
 
-  const say = useCallback((text: string) => {
-    setCaption(text);
-    window.setTimeout(() => setCaption((c) => (c === text ? null : c)), 3400);
-  }, []);
+  useEffect(() => {
+    st.current.hideCounter = askHunch || home > 0;
+  }, [askHunch, home]);
 
   const attach = useCallback((w: World) => {
     worldRef.current = w;
@@ -72,7 +81,6 @@ export default function AntsLab() {
     s.runTime = 0;
     s.peak = w.lit;
     s.keepGoing = false;
-    s.said = new Set();
     if (!viewRef.current && canvasRef.current) viewRef.current = new AntView(canvasRef.current, w);
     else viewRef.current?.attach(w);
   }, []);
@@ -93,7 +101,8 @@ export default function AntsLab() {
     if (!el) return;
     const ro = new ResizeObserver(() => {
       const r = el.getBoundingClientRect();
-      viewRef.current?.resize(r.width, r.height, Math.min(2, window.devicePixelRatio || 1));
+      viewRef.current?.resize(r.width, r.height, Math.min(2.5, window.devicePixelRatio || 1));
+      setSw(Math.round(Math.min(r.width, r.height * 0.5625)));
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -114,10 +123,10 @@ export default function AntsLab() {
       const v = viewRef.current;
       const s = st.current;
       if (w && v) {
+        let sps = 0;
         if (s.running && !w.edge) {
+          sps = s.speed === "auto" ? (s.video ? rateAt(w.step) : Math.min(10000, 24 * Math.exp(0.6 * s.runTime))) : s.speed;
           s.runTime += dt;
-          let sps = s.speed === "auto" ? Math.min(10000, 24 * Math.exp(0.6 * s.runTime)) : s.speed;
-          if (s.speed === "auto" && s.video && w.step > 20000 && w.lit < 150 && !s.keepGoing) sps = 240;
           s.acc += sps * dt;
           const n = Math.min(Math.floor(s.acc), 400000);
           if (n > 0) {
@@ -125,24 +134,12 @@ export default function AntsLab() {
             const before = w.step;
             const wasHome = w.home;
             w.run(n, !s.keepGoing);
+            s.lastStep = now;
             if (s.sound) clicker.current?.tick(w.step - before, dt);
             if (w.lit > s.peak) s.peak = w.lit;
-            if (s.video) {
-              if (w.step >= 10000 && !s.said.has("hw")) {
-                s.said.add("hw");
-                say("Step 10,000: the first highway");
-              }
-              if (w.step >= 43427 && !s.said.has("peak")) {
-                s.said.add("peak");
-                say("5,616 squares lit: the biggest it gets");
-              }
-              if (w.step > 20000 && w.lit < 150 && !s.said.has("end")) {
-                s.said.add("end");
-                say("Almost empty…");
-              }
-            }
             if (w.home && !wasHome) {
               stop();
+              s.acc = 0;
               setHome(w.home);
               navigator.vibrate?.([30, 50, 80]);
               if (s.sound) clicker.current?.chime();
@@ -153,22 +150,45 @@ export default function AntsLab() {
             }
           }
         }
-        v.frame(dt);
-        if (stepEl.current) stepEl.current.textContent = fmt(w.step);
-        if (litEl.current) litEl.current.textContent = `${fmt(w.lit)} lit · peak ${fmt(s.peak)}`;
+        const atHome = Boolean(w.home) && w.step === w.home && !s.keepGoing;
+        const cap = s.video ? captions(w.step, atHome) : { intro: 0, watch: 0, highway: 0, collide: 0, undo: 0, empty: atHome ? 1 : 0 };
+        v.insets = { top: v.h * (cap.intro > 0.05 ? 0.3 : 0.18), bottom: v.h * 0.24, left: v.w * 0.04, right: v.w * 0.04 };
+        v.frame(dt, { rate: s.running ? sps : 0, u: s.acc });
+        if (introEl.current) introEl.current.style.opacity = String(cap.intro);
+        for (const k of ["watch", "highway", "collide", "undo", "empty"] as const) {
+          const el = capEls.current[k];
+          if (el) el.style.opacity = String(cap[k]);
+        }
+        const h = s.video && s.running && sps < 25 ? Math.exp(-(now - s.lastStep) / 250) : 0;
+        for (let p = 0; p < 2; p++) {
+          const el = pillEls.current[p];
+          if (!el) continue;
+          const who = [0, 1].filter((a) => a < w.n && w.rule[a] === p);
+          const col = who.length === 1 ? ANT_COLORS[w.tone[who[0]]] : "#FFFFFF";
+          const on = who.length > 0 ? h : 0;
+          el.style.boxShadow = on > 0.01 ? `inset 0 0 0 ${Math.max(2, sw * 0.0037)}px ${col}${Math.round(on * 0.85 * 255).toString(16).padStart(2, "0")}` : "none";
+          el.style.background = on > 0.01 ? `color-mix(in srgb, ${col} ${Math.round(on * 10)}%, rgba(255,255,255,0.06))` : "rgba(255,255,255,0.06)";
+        }
+        if (counterEl.current) counterEl.current.style.opacity = s.hideCounter ? "0" : "1";
+        if (stepEl.current) {
+          stepEl.current.textContent = `STEP ${fmt(w.step)}`;
+          stepEl.current.style.color = atHome ? GOLD : "#DDE5F5";
+        }
+        if (litEl.current) {
+          litEl.current.textContent = `${fmt(w.lit)} CELLS LIT`;
+          litEl.current.style.color = atHome ? GOLD : "#8D9AB8";
+        }
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [say, stop]);
+  }, [stop, sw]);
 
   const play = useCallback(() => {
     const w = worldRef.current;
     if (!w) return;
-    if (w.edge || (w.home && w.step === w.home && !st.current.keepGoing)) {
-      setVersion((v) => v + 1);
-    }
+    if (w.edge || (w.home && w.step === w.home && !st.current.keepGoing)) setVersion((v) => v + 1);
     setHunchDone(true);
     setHome(0);
     setEdge(false);
@@ -194,7 +214,6 @@ export default function AntsLab() {
       return;
     }
     st.current.speed = s;
-    if (s === "auto") st.current.runTime = Math.log(Math.max(1, (worldRef.current?.step ?? 0) / 40 + 1)) / 0.6;
     setSpeed(s);
     setSpeedMenu(false);
   };
@@ -267,7 +286,7 @@ export default function AntsLab() {
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const gest = useRef({ moved: 0, t: 0, dist: 0, mx: 0, my: 0 });
 
-  const local = (e: React.PointerEvent | React.WheelEvent) => {
+  const local = (e: { clientX: number; clientY: number }) => {
     const r = canvasRef.current!.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
@@ -315,9 +334,7 @@ export default function AntsLab() {
     if (gest.current.moved < 6 && performance.now() - gest.current.t < 450 && placing !== null && viewRef.current && worldRef.current) {
       const wpt = viewRef.current.toWorld(p.x, p.y);
       const c = worldRef.current.size >> 1;
-      const x = Math.floor(wpt.x) - c;
-      const y = Math.floor(wpt.y) - c;
-      const ants = setup.ants.map((a, i) => (i === placing ? { ...a, x, y } : a));
+      const ants = setup.ants.map((a, i) => (i === placing ? { ...a, x: Math.floor(wpt.x) - c, y: Math.floor(wpt.y) - c } : a));
       setPlacing(null);
       change({ ...setup, ants });
     }
@@ -328,6 +345,18 @@ export default function AntsLab() {
     viewRef.current?.zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
     setFollow(false);
   };
+
+  const cap = (key: string, text: string, size: number, color: string, top: string) => (
+    <p
+      ref={(el) => {
+        capEls.current[key] = el;
+      }}
+      className="display absolute inset-x-0 px-2 text-center font-extrabold uppercase leading-none"
+      style={{ top, fontSize: u(size), color, opacity: 0, textShadow: SHADOW }}
+    >
+      {text}
+    </p>
+  );
 
   return (
     <LabShell
@@ -341,7 +370,7 @@ export default function AntsLab() {
         </button>
       }
     >
-      <div ref={wrapRef} className="absolute inset-0">
+      <div ref={wrapRef} className="absolute inset-0 bg-[#05060B]">
         <canvas
           ref={canvasRef}
           className={`block h-full w-full touch-none ${placing !== null ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"}`}
@@ -351,17 +380,41 @@ export default function AntsLab() {
           onPointerCancel={onUp}
           onWheel={onWheel}
           onDoubleClick={(e) => {
-            const p = local(e as unknown as React.PointerEvent);
+            const p = local(e);
             viewRef.current?.zoomAt(p.x, p.y, 2);
             setFollow(false);
           }}
         />
       </div>
 
-      <div className="pointer-events-none absolute left-4 top-2 select-none">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-mist">Step</p>
-        <span ref={stepEl} className="num display block text-4xl font-black leading-none text-ink sm:text-5xl">0</span>
-        <span ref={litEl} className="num mt-1 block text-xs text-mist">0 lit · peak 0</span>
+      <div className="pointer-events-none absolute inset-0 select-none" style={{ ["--sw" as string]: `${sw}px` }}>
+        {isVideo && (
+          <div ref={introEl} className="absolute inset-x-0 text-center" style={{ top: "5.5%" }}>
+            <p className="display font-extrabold uppercase leading-[1.09] text-[#F4F6FB]" style={{ fontSize: u(92), textShadow: SHADOW }}>
+              Two ants
+            </p>
+            <p className="display font-extrabold uppercase leading-[1.09]" style={{ fontSize: u(92), color: GOLD, textShadow: SHADOW }}>
+              Same 2 rules
+            </p>
+            <div className="flex justify-center" style={{ gap: u(50), marginTop: u(56) }}>
+              <RulePill ref={(el) => { pillEls.current[0] = el; }} lit={false} cw label="Dark square: turn right" />
+              <RulePill ref={(el) => { pillEls.current[1] = el; }} lit cw={false} label="Lit square: turn left" />
+            </div>
+          </div>
+        )}
+        {isVideo && cap("watch", "Watch step 84,876", 74, "#F4F6FB", "11.5%")}
+        {isVideo && cap("highway", "One builds a highway", 74, ANT_COLORS[0], "11.5%")}
+        {isVideo && cap("collide", "They collide…", 80, "#F4F6FB", "11.2%")}
+        {isVideo && cap("undo", "…and undo it all", 80, GOLD, "11.2%")}
+        {cap("empty", "Back to empty", 88, GOLD, "11%")}
+        <div ref={counterEl} className="absolute inset-x-0 text-center transition-opacity duration-300" style={{ top: "79.5%", opacity: 0 }}>
+          <p ref={stepEl} className="display num font-extrabold leading-none" style={{ fontSize: u(62), color: "#DDE5F5", textShadow: SHADOW }}>
+            STEP 0
+          </p>
+          <p ref={litEl} className="num mt-[0.55em] font-semibold leading-none" style={{ fontSize: u(40), color: "#8D9AB8" }}>
+            0 CELLS LIT
+          </p>
+        </div>
       </div>
 
       {!follow && (
@@ -377,14 +430,8 @@ export default function AntsLab() {
         </button>
       )}
 
-      {caption && (
-        <div className="pointer-events-none absolute inset-x-0 top-24 flex justify-center px-4">
-          <p className="glass rounded-full px-4 py-2 text-center text-sm font-bold animate-rise">{caption}</p>
-        </div>
-      )}
-
       {((shared && !unlocked) || blockedShare) && (
-        <button type="button" onClick={() => upsell(blockedShare ? "Shared setups" : "Making your own setups")} className="glass absolute inset-x-4 top-24 mx-auto flex max-w-sm items-center gap-2 rounded-2xl px-3 py-2 text-left text-xs animate-rise">
+        <button type="button" onClick={() => upsell(blockedShare ? "Shared setups" : "Making your own setups")} className="glass absolute inset-x-4 top-[24%] mx-auto flex max-w-sm items-center gap-2 rounded-2xl px-3 py-2 text-left text-xs animate-rise">
           <span>🔗</span>
           <span className="flex-1">{blockedShare ? "Someone shared a setup from the full lab." : "A setup shared from the full lab. Make your own?"}</span>
           <span className="font-black text-gold">Unlock</span>
@@ -392,10 +439,19 @@ export default function AntsLab() {
       )}
 
       {placing !== null && (
-        <div className="absolute inset-x-4 top-24 mx-auto flex max-w-sm items-center gap-2 rounded-2xl bg-cyan px-4 py-2.5 text-sm font-bold text-navy-950 shadow-2xl animate-pop">
+        <div className="absolute inset-x-4 top-[24%] mx-auto flex max-w-sm items-center gap-2 rounded-2xl bg-cyan px-4 py-2.5 text-sm font-bold text-navy-950 shadow-2xl animate-pop">
           <span className="flex-1">Tap a square to place ant {placing + 1}</span>
           <button type="button" onClick={() => setPlacing(null)} className="rounded-full bg-navy-950/15 px-3 py-1">
             Cancel
+          </button>
+        </div>
+      )}
+
+      {edge && (
+        <div className="absolute inset-x-4 top-[24%] mx-auto flex max-w-sm items-center gap-3 rounded-2xl bg-coral px-4 py-3 text-sm font-bold text-navy-950 shadow-2xl animate-pop">
+          <span className="flex-1">An ant walked off the edge of the lab.</span>
+          <button type="button" onClick={restart} className="rounded-full bg-navy-950/15 px-3 py-1">
+            Restart
           </button>
         </div>
       )}
@@ -406,44 +462,46 @@ export default function AntsLab() {
         </div>
       )}
 
-      {askHunch && isVideo && (
-        <div className="absolute inset-0 z-20 flex items-end justify-center bg-navy-950/45 p-4 pb-32 backdrop-blur-[2px] sm:items-center sm:pb-4">
-          <div className="glass w-full max-w-sm rounded-3xl p-5 text-center shadow-2xl animate-rise">
-            <Crunchy size={68} mood="squint" className="mx-auto -mt-12 animate-float" />
-            <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-gold">Two ants · same 2 rules</p>
-            <h2 className="display mt-1 text-2xl font-black leading-tight">Will they ever clean up their mess?</h2>
-            <p className="mt-2 text-sm text-mist">Dark square: turn right. Lit square: turn left. Flip it, step forward. They take turns.</p>
-            <p className="mt-3 text-sm font-bold">Got a hunch? Lock it in.</p>
+      {askHunch && (
+        <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4">
+          <div className="glass relative w-full max-w-sm rounded-3xl p-4 pt-5 text-center shadow-2xl animate-rise">
+            <Crunchy size={52} mood="squint" className="absolute -top-8 left-1/2 -translate-x-1/2" />
+            <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gold">Got a hunch? Lock it in.</p>
+            <p className="display mt-1 text-lg font-black leading-tight">Will they ever clean up their mess?</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => { setHunch("home"); play(); }} className="rounded-2xl bg-mint px-3 py-3 font-black text-navy-950 active:scale-95">
+              <button type="button" onClick={() => { setHunch("home"); play(); }} className="rounded-2xl bg-mint px-3 py-2.5 text-sm font-black text-navy-950 active:scale-95">
                 They come home
               </button>
-              <button type="button" onClick={() => { setHunch("chaos"); play(); }} className="rounded-2xl bg-coral px-3 py-3 font-black text-navy-950 active:scale-95">
+              <button type="button" onClick={() => { setHunch("chaos"); play(); }} className="rounded-2xl bg-coral px-3 py-2.5 text-sm font-black text-navy-950 active:scale-95">
                 Chaos forever
               </button>
             </div>
-            <button type="button" onClick={() => setHunchDone(true)} className="mt-3 text-xs text-mist underline-offset-4 hover:underline">
-              Just let me play
+            <button type="button" onClick={() => setHunchDone(true)} className="mt-2 text-xs text-mist underline-offset-4 hover:underline">
+              Just let me watch
             </button>
           </div>
         </div>
       )}
 
       {home > 0 && (
-        <div className="absolute inset-0 z-20 flex items-end justify-center bg-navy-950/40 p-4 pb-32 sm:items-center sm:pb-4">
-          <div className="glass w-full max-w-sm rounded-3xl p-5 text-center shadow-2xl animate-pop">
-            <Crunchy size={76} mood="grin" className="mx-auto -mt-14 animate-crunch" />
-            <p className="display mt-2 text-5xl font-black text-shine">HOME</p>
-            <p className="num mt-1 text-lg font-bold">Step {fmt(home)}</p>
-            <p className="mt-2 text-sm text-mist">
-              {isVideo ? "Empty grid. Both ants on their starting squares, facing the same way. From here it repeats forever." : "Empty grid, every ant back where it started. From here it repeats forever."}
+        <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4">
+          <div className="glass relative w-full max-w-sm rounded-3xl p-4 pt-5 text-center shadow-2xl animate-pop">
+            <Crunchy size={56} mood="grin" className="absolute -top-9 left-1/2 -translate-x-1/2 animate-crunch" />
+            <p className="display num mt-2 font-extrabold leading-none" style={{ fontSize: "1.65rem", color: GOLD }}>
+              STEP {fmt(home)}
             </p>
-            {hunch && isVideo && <p className="mt-2 text-sm font-bold">{hunch === "home" ? "Your hunch was right. 🎯" : "Your hunch said chaos. The ants disagree. 😏"}</p>}
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => { restart(); window.setTimeout(play, 30); }} className="rounded-2xl bg-ink px-3 py-3 font-black text-navy-950 active:scale-95">
+            <p className="num mt-1 text-sm font-semibold" style={{ color: GOLD }}>
+              0 CELLS LIT
+            </p>
+            <p className="mt-2 text-sm text-mist">
+              {isVideo ? "Empty grid, both ants on their starting squares, facing the same way. It repeats forever." : "Empty grid, every ant back where it started. It repeats forever."}
+            </p>
+            {hunch && isVideo && <p className="mt-1.5 text-sm font-bold">{hunch === "home" ? "Your hunch was right. 🎯" : "Your hunch said chaos. The ants disagree. 😏"}</p>}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => { restart(); window.setTimeout(play, 30); }} className="rounded-2xl bg-ink px-3 py-2.5 text-sm font-black text-navy-950 active:scale-95">
                 Watch again
               </button>
-              <button type="button" onClick={keepGoing} className="rounded-2xl px-3 py-3 font-bold ring-1 ring-edge/40 active:scale-95">
+              <button type="button" onClick={keepGoing} className="rounded-2xl px-3 py-2.5 text-sm font-bold ring-1 ring-edge/40 active:scale-95">
                 Keep going
               </button>
             </div>
@@ -454,7 +512,7 @@ export default function AntsLab() {
                 if (unlocked) setSheet(true);
                 else upsell("Your own ants");
               }}
-              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-2xl bg-gold px-3 py-3 font-black text-navy-950 active:scale-95"
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-2xl bg-gold px-3 py-2.5 text-sm font-black text-navy-950 active:scale-95"
             >
               {!unlocked && <LockIcon />} Try your own ants
             </button>
@@ -462,17 +520,8 @@ export default function AntsLab() {
         </div>
       )}
 
-      {edge && (
-        <div className="absolute inset-x-4 top-24 mx-auto flex max-w-sm items-center gap-3 rounded-2xl bg-coral px-4 py-3 text-sm font-bold text-navy-950 shadow-2xl animate-pop">
-          <span className="flex-1">An ant walked off the edge of the lab.</span>
-          <button type="button" onClick={restart} className="rounded-full bg-navy-950/15 px-3 py-1">
-            Restart
-          </button>
-        </div>
-      )}
-
       {speedMenu && (
-        <div className="absolute inset-x-0 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-4">
+        <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-4">
           <div className="glass flex flex-wrap justify-center gap-1.5 rounded-2xl p-2 shadow-2xl animate-pop">
             {(["auto", ...FREE_SPEEDS, ...FULL_SPEEDS] as Speed[]).map((s) => {
               const locked = typeof s === "number" && s > 10000 && !unlocked;
@@ -532,7 +581,7 @@ export default function AntsLab() {
           <p><span className="font-bold text-ink">Two ants.</span> They take turns, one step each, on the same empty grid. The second starts 15 squares left and 5 up, facing right. The first faces up.</p>
           <p><span className="font-bold text-ink">One ant alone</span> builds a highway after about 10,000 steps and never stops. These two build a mess, then highways, then a giant rectangle. Their highways collide, and from there they undo every square they ever lit.</p>
           <p><span className="font-bold text-ink">At step 84,876</span> the grid is empty again and both ants are back where they started, facing the same way. So it repeats forever.</p>
-          <p>Drag to look around, pinch or scroll to zoom. Space plays and pauses.</p>
+          <p>Auto plays it at the same pace as the video. Drag to look around, pinch or scroll to zoom. Space plays and pauses.</p>
         </div>
       </Sheet>
     </LabShell>
