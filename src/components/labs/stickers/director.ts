@@ -1,12 +1,9 @@
 import { PALETTE, colorOf, isRare } from "./config";
 import type { PackResult } from "./game";
 import type { Spec } from "./math";
+import { CORAL, FLY_DUP, GOLD, GRID, INK, MOUTH_Y, PACK, PILE, SLOT, WHITE, Y0, VW } from "./video";
 
 export type Visual = { packs: number; owned: number; doubles: number };
-
-export type Anchor = { x: number; y: number };
-
-export type Anchors = { mouth: Anchor; pile: Anchor; friends: Anchor[] };
 
 export type Settled = {
   packs: number;
@@ -23,51 +20,51 @@ export type Settled = {
 export type PlayOptions = { instant?: boolean; fast?: boolean };
 
 type Options = {
+  stage: HTMLElement;
   album: HTMLCanvasElement;
   fx: HTMLCanvasElement;
   spec: Spec;
-  anchors: () => Anchors;
+  friends: () => Element[];
   truth: () => ArrayLike<number>;
   onVisual: (v: Visual) => void;
   onSettled: (s: Settled) => void;
   onComplete: () => void;
+  onOpen: (ms: number, last: boolean) => void;
 };
 
-type Layout = { cols: number; rows: number; pitch: number; tile: number; x0: number; y0: number; shift: number };
+type Layout = { cols: number; rows: number; pitch: number; tile: number; gap: number; x0: number; y0: number; shift: number };
 
 type Kind = "new" | "dup" | "in" | "out";
 
 type Flyer = {
   id: number;
   kind: Kind;
-  ax: number;
-  ay: number;
-  bx: number;
-  by: number;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
   slotEnd: boolean;
   t0: number;
   dur: number;
-  bend: number;
-  tilt: number;
-  size: number;
+  arc: number;
+  size0: number;
+  size1: number;
 };
 
-type Pulse = { id: number; t0: number; rare: boolean };
+type Flash = { id: number; t0: number };
 
 type Spark = { x: number; y: number; vx: number; vy: number; age: number; life: number; size: number; color: string };
 
-type Piece = { x: number; y: number; vx: number; vy: number; rot: number; vr: number; w: number; h: number; color: string; age: number; life: number };
-
-const NAVY = "#0B1020";
-const GOLD = "#FFC94A";
-
-const ease = {
-  out: (u: number) => 1 - Math.pow(1 - u, 3),
-  io: (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2),
-  back: (u: number) => 1 + 2.4 * Math.pow(u - 1, 3) + 1.4 * Math.pow(u - 1, 2),
-};
+const PAD = 12;
+const AX = GRID.x - PAD;
+const AY = GRID.y - PAD;
+export const ALBUM_VW = GRID.w + PAD * 2;
+export const ALBUM_VH = GRID.h + PAD * 2;
+export const ALBUM_X = AX;
+export const ALBUM_Y = AY;
 
 const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
+const ioCubic = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
 
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -94,62 +91,65 @@ function sparkle(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: numbe
   ctx.closePath();
 }
 
-export function computeLayout(n: number, w: number, h: number): Layout {
+export function computeLayout(n: number): Layout {
+  const g = GRID.gap;
   let best = { cols: 1, score: -1, pitch: 0 };
   for (let cols = 1; cols <= n; cols++) {
     const rows = Math.ceil(n / cols);
-    const pitch = Math.min(w / cols, h / rows, 76);
-    const score = pitch * (n % cols === 0 ? 1.22 : 1);
+    const pitch = Math.min(GRID.w / (cols - g), GRID.h / (rows - g), 118);
+    const score = pitch * (n % cols === 0 ? 1.03 : 1);
     if (score > best.score) best = { cols, score, pitch };
   }
   const cols = best.cols;
   const rows = Math.ceil(n / cols);
-  const pitch = Math.max(2, best.pitch);
-  const gap = pitch >= 30 ? 4 : pitch >= 20 ? 3 : pitch >= 12 ? 2 : 1;
-  const tile = Math.max(1, pitch - gap);
-  const x0 = (w - (cols * pitch - gap)) / 2;
-  const y0 = (h - (rows * pitch - gap)) / 2;
+  const pitch = best.pitch;
+  const gap = pitch * g;
+  const tile = pitch - gap;
+  const x0 = PAD + (GRID.w - (cols * pitch - gap)) / 2;
+  const y0 = PAD + (GRID.h - (rows * pitch - gap)) / 2;
   const lastCols = n - (rows - 1) * cols;
   const shift = ((cols - lastCols) * pitch) / 2;
-  return { cols, rows, pitch, tile, x0, y0, shift };
+  return { cols, rows, pitch, tile, gap, x0, y0, shift };
 }
 
 export class Director {
+  private opts: Options;
+  private stage: HTMLElement;
   private album: HTMLCanvasElement;
   private fx: HTMLCanvasElement;
   private actx: CanvasRenderingContext2D;
   private fctx: CanvasRenderingContext2D;
-  private opts: Options;
   private spec: Spec;
   private shown: Uint16Array;
   private vis: Visual = { packs: 0, owned: 0, doubles: 0 };
   private copies = 0;
-  private layout: Layout = { cols: 1, rows: 1, pitch: 10, tile: 8, x0: 0, y0: 0, shift: 0 };
-  private aw = 0;
-  private ah = 0;
-  private fw = 0;
-  private fh = 0;
-  private ox = 0;
-  private oy = 0;
+  private layout: Layout;
+  private s = 1;
+  private fw = 1;
+  private fh = 1;
   private events: { at: number; run: () => void }[] = [];
   private flyers: Flyer[] = [];
-  private pulses: Pulse[] = [];
+  private flashes: Flash[] = [];
   private sparks: Spark[] = [];
-  private pieces: Piece[] = [];
+  private rays: { x: number; y: number; t0: number } | null = null;
+  private hole = -1;
   private raf = 0;
   private dirty = false;
   private dead = false;
   private reduced: boolean;
   private font: string;
   private lastTick = 0;
+  private clock = 0;
   private needsSync = false;
 
   constructor(opts: Options) {
     this.opts = opts;
+    this.stage = opts.stage;
     this.album = opts.album;
     this.fx = opts.fx;
     this.spec = opts.spec;
     this.shown = new Uint16Array(opts.spec.n);
+    this.layout = computeLayout(opts.spec.n);
     const a = opts.album.getContext("2d");
     const f = opts.fx.getContext("2d");
     if (!a || !f) throw new Error("canvas unavailable");
@@ -166,56 +166,56 @@ export class Director {
     this.raf = 0;
   }
 
-  snapshot(): Visual {
-    return { ...this.vis };
-  }
-
   refreshFont() {
     this.font = getComputedStyle(this.album).fontFamily || this.font;
     this.paintAll();
   }
 
   resize() {
-    const ad = Math.min(window.devicePixelRatio || 1, 3);
-    const fd = Math.min(window.devicePixelRatio || 1, 2);
-    this.aw = Math.max(1, this.album.clientWidth);
-    this.ah = Math.max(1, this.album.clientHeight);
+    const dpr = window.devicePixelRatio || 1;
+    const ad = Math.min(dpr, 3);
+    const fd = Math.min(dpr, 2);
+    const sr = this.stage.getBoundingClientRect();
+    this.s = sr.width / (this.stage.offsetWidth || VW) || 1;
+    this.album.width = Math.max(1, Math.round(ALBUM_VW * this.s * ad));
+    this.album.height = Math.max(1, Math.round(ALBUM_VH * this.s * ad));
+    this.actx.setTransform(ad * this.s, 0, 0, ad * this.s, 0, 0);
     this.fw = Math.max(1, this.fx.clientWidth);
     this.fh = Math.max(1, this.fx.clientHeight);
-    this.album.width = Math.round(this.aw * ad);
-    this.album.height = Math.round(this.ah * ad);
     this.fx.width = Math.round(this.fw * fd);
     this.fx.height = Math.round(this.fh * fd);
-    this.actx.setTransform(ad, 0, 0, ad, 0, 0);
-    this.fctx.setTransform(fd, 0, 0, fd, 0, 0);
-    this.layout = computeLayout(this.spec.n, this.aw, this.ah);
-    this.measure();
     this.paintAll();
+    this.measure();
   }
 
   private measure() {
-    const a = this.album.getBoundingClientRect();
-    const f = this.fx.getBoundingClientRect();
-    this.ox = a.left - f.left;
-    this.oy = a.top - f.top;
+    const fd = Math.min(window.devicePixelRatio || 1, 2);
+    const sr = this.stage.getBoundingClientRect();
+    const fr = this.fx.getBoundingClientRect();
+    this.s = sr.width / (this.stage.offsetWidth || VW) || this.s;
+    const ox = sr.left - fr.left;
+    const oy = sr.top - fr.top;
+    this.fctx.setTransform(fd * this.s, 0, 0, fd * this.s, fd * ox, fd * (oy - Y0 * this.s));
   }
 
-  tileSize() {
-    return this.layout.tile;
+  private toScene(el: Element) {
+    const sr = this.stage.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    return { x: (r.left + r.width / 2 - sr.left) / this.s, y: (r.top + r.height / 2 - sr.top) / this.s + Y0 };
   }
 
   idAt(clientX: number, clientY: number) {
-    const r = this.album.getBoundingClientRect();
+    const sr = this.stage.getBoundingClientRect();
     const L = this.layout;
-    const px = clientX - r.left - L.x0;
-    const py = clientY - r.top - L.y0;
+    const px = (clientX - sr.left) / this.s - AX - L.x0;
+    const py = (clientY - sr.top) / this.s + Y0 - AY - L.y0;
     if (px < 0 || py < 0) return -1;
     const row = Math.floor(py / L.pitch);
     if (row >= L.rows) return -1;
     const rx = px - (row === L.rows - 1 ? L.shift : 0);
     const col = Math.floor(rx / L.pitch);
     if (rx < 0 || col >= L.cols) return -1;
-    if (rx - col * L.pitch > L.tile + 2 || py - row * L.pitch > L.tile + 2) return -1;
+    if (rx - col * L.pitch > L.tile + L.gap || py - row * L.pitch > L.tile + L.gap) return -1;
     const id = row * L.cols + col;
     return id < this.spec.n ? id : -1;
   }
@@ -229,91 +229,82 @@ export class Director {
     const col = id % L.cols;
     const row = (id / L.cols) | 0;
     const dx = row === L.rows - 1 ? L.shift : 0;
-    return { x: this.ox + L.x0 + dx + col * L.pitch + L.tile / 2, y: this.oy + L.y0 + row * L.pitch + L.tile / 2 };
+    return { x: AX + L.x0 + dx + col * L.pitch + L.tile / 2, y: AY + L.y0 + row * L.pitch + L.tile / 2 };
   }
 
-  private drawTile(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, id: number, filled: boolean, count: number) {
-    const x = cx - size / 2;
-    const y = cy - size / 2;
-    const r = Math.max(1.5, size * 0.2);
+  private drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, d: number, id: number, filled: boolean, count: number) {
+    const r = d * 0.178;
     const rare = isRare(this.spec.rareEvery, id);
-    const text = size >= 19;
+    rr(ctx, x, y, d, d, r);
     if (!filled) {
-      rr(ctx, x, y, size, size, r);
-      ctx.fillStyle = rare ? "rgba(255,201,74,0.07)" : "rgba(255,255,255,0.05)";
+      ctx.fillStyle = SLOT;
       ctx.fill();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = rare ? "rgba(255,201,74,0.55)" : "rgba(111,128,179,0.3)";
-      if (rare && size >= 12) ctx.setLineDash([3, 2.5]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      if (text) {
-        ctx.fillStyle = rare ? "rgba(255,201,74,0.7)" : "rgba(169,182,211,0.5)";
-        ctx.font = `700 ${Math.round(size * 0.36)}px ${this.font}`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(String(id + 1), cx, cy + size * 0.03);
+      if (rare && d >= 14) {
+        ctx.lineWidth = Math.max(1, d * 0.06);
+        ctx.strokeStyle = "rgba(255,201,74,0.6)";
+        ctx.setLineDash([d * 0.14, d * 0.1]);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
       return;
     }
-    rr(ctx, x, y, size, size, r);
     if (rare) {
-      const g = ctx.createLinearGradient(x, y, x + size, y + size);
+      const g = ctx.createLinearGradient(x, y, x + d, y + d);
       g.addColorStop(0, "#FFF3C4");
-      g.addColorStop(0.45, GOLD);
+      g.addColorStop(0.5, GOLD);
       g.addColorStop(1, "#C98F22");
       ctx.fillStyle = g;
     } else {
       ctx.fillStyle = PALETTE[colorOf(id)];
     }
     ctx.fill();
-    if (size >= 8) {
-      ctx.fillStyle = "rgba(255,255,255,0.38)";
-      ctx.fillRect(x + size * 0.14, y + size * 0.1, size * 0.46, Math.max(1, size * 0.09));
-      ctx.fillStyle = "rgba(11,16,32,0.2)";
-      ctx.fillRect(x + size * 0.1, y + size - Math.max(1.5, size * 0.1), size * 0.8, Math.max(1, size * 0.07));
-    }
-    if (rare && size >= 7) {
-      ctx.lineWidth = Math.max(1, size * 0.06);
+    ctx.fillStyle = "rgba(244,246,251,0.35)";
+    ctx.fillRect(x + d * 0.1333, y + d * 0.1333, d * 0.45, d * 0.1333);
+    if (rare) {
+      ctx.lineWidth = Math.max(1.2, d * 0.07);
       ctx.strokeStyle = "#FFF3C4";
-      rr(ctx, x + 0.5, y + 0.5, size - 1, size - 1, r);
+      rr(ctx, x + ctx.lineWidth / 2, y + ctx.lineWidth / 2, d - ctx.lineWidth, d - ctx.lineWidth, r);
       ctx.stroke();
       ctx.fillStyle = "#FFFFFF";
-      sparkle(ctx, x + size * 0.8, y + size * 0.22, Math.max(2, size * 0.2));
+      sparkle(ctx, x + d * 0.78, y + d * 0.24, Math.max(2.5, d * 0.2));
       ctx.fill();
     }
-    if (text) {
-      ctx.fillStyle = rare ? "#5A3B00" : NAVY;
-      ctx.font = `800 ${Math.round(size * 0.4)}px ${this.font}`;
+    if (d >= 60) {
+      ctx.fillStyle = rare ? "rgba(90,59,0,0.75)" : "rgba(10,15,31,0.55)";
+      ctx.font = `800 ${Math.round(d * 0.34)}px ${this.font}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(String(id + 1), cx, cy + size * 0.05);
+      ctx.fillText(String(id + 1), x + d / 2, y + d * 0.56);
+      if (count > 1 && d >= 72) {
+        const bw = d * 0.4;
+        const bh = d * 0.24;
+        rr(ctx, x + d - bw - d * 0.06, y + d - bh - d * 0.06, bw, bh, bh / 2);
+        ctx.fillStyle = "rgba(10,15,31,0.85)";
+        ctx.fill();
+        ctx.fillStyle = WHITE;
+        ctx.font = `800 ${Math.round(bh * 0.7)}px ${this.font}`;
+        ctx.fillText(`x${count}`, x + d - bw / 2 - d * 0.06, y + d - bh / 2 - d * 0.05);
+      }
     }
-    if (count > 1 && size >= 34) {
-      const bw = size * 0.38;
-      const bh = size * 0.26;
-      rr(ctx, x + size - bw - 2, y + size - bh - 2, bw, bh, bh / 2);
-      ctx.fillStyle = "rgba(11,16,32,0.88)";
-      ctx.fill();
-      ctx.fillStyle = "#F4F6FB";
-      ctx.font = `800 ${Math.round(bh * 0.7)}px ${this.font}`;
-      ctx.fillText(`×${count}`, x + size - bw / 2 - 2, y + size - bh / 2 - 1.5);
-    }
+  }
+
+  private cell(i: number) {
+    const L = this.layout;
+    const col = i % L.cols;
+    const row = (i / L.cols) | 0;
+    return { x: L.x0 + (row === L.rows - 1 ? L.shift : 0) + col * L.pitch, y: L.y0 + row * L.pitch };
   }
 
   private paintTile(i: number) {
     const L = this.layout;
-    const col = i % L.cols;
-    const row = (i / L.cols) | 0;
-    const x = L.x0 + (row === L.rows - 1 ? L.shift : 0) + col * L.pitch;
-    const y = L.y0 + row * L.pitch;
-    const half = (L.pitch - L.tile) / 2;
+    const { x, y } = this.cell(i);
+    const half = L.gap / 2;
     this.actx.clearRect(x - half, y - half, L.pitch, L.pitch);
-    this.drawTile(this.actx, x + L.tile / 2, y + L.tile / 2, L.tile, i, this.shown[i] > 0, this.shown[i]);
+    this.drawTile(this.actx, x, y, L.tile, i, this.shown[i] > 0, this.shown[i]);
   }
 
   private paintAll() {
-    this.actx.clearRect(0, 0, this.aw, this.ah);
+    this.actx.clearRect(0, 0, ALBUM_VW, ALBUM_VH);
     for (let i = 0; i < this.spec.n; i++) this.paintTile(i);
   }
 
@@ -325,25 +316,8 @@ export class Director {
     this.flyers.push(f);
   }
 
-  private makeFlyer(kind: Kind, id: number, from: Anchor, to: Anchor | null, t0: number, dur: number): Flyer {
-    const target = to ?? this.slot(id);
-    const dx = target.x - from.x;
-    const dy = target.y - from.y;
-    const size = Math.min(46, Math.max(28, this.layout.tile * 1.35));
-    return {
-      id,
-      kind,
-      ax: from.x,
-      ay: from.y,
-      bx: to ? to.x : 0,
-      by: to ? to.y : 0,
-      slotEnd: !to,
-      t0,
-      dur,
-      bend: (Math.random() - 0.5) * 0.9 * (Math.abs(dx) + Math.abs(dy) > 120 ? 1 : 0.4),
-      tilt: (Math.random() - 0.5) * 0.8,
-      size,
-    };
+  private now() {
+    return this.clock || performance.now();
   }
 
   private land(id: number) {
@@ -352,13 +326,14 @@ export class Director {
     this.copies++;
     if (was === 0) {
       this.vis.owned++;
-      if (!this.reduced && this.pulses.length < 80) {
-        this.burst(id);
-        this.pulses.push({ id, t0: performance.now(), rare: isRare(this.spec.rareEvery, id) });
-      }
+      this.refreshHole();
     }
     this.vis.doubles = this.copies - this.vis.owned;
-    if (was === 0 || this.layout.tile >= 34) this.paintTile(id);
+    if (was === 0 || this.layout.tile >= 72) this.paintTile(id);
+    if (was === 0 && !this.reduced) {
+      if (this.flashes.length < 120) this.flashes.push({ id, t0: this.now() });
+      if (isRare(this.spec.rareEvery, id)) this.sparkRare(id);
+    }
     this.dirty = true;
   }
 
@@ -367,47 +342,55 @@ export class Director {
     this.shown[id]--;
     this.copies--;
     this.vis.doubles = this.copies - this.vis.owned;
-    if (this.layout.tile >= 34) this.paintTile(id);
+    if (this.layout.tile >= 72) this.paintTile(id);
     this.dirty = true;
   }
 
-  private burst(id: number) {
-    if (this.reduced || this.sparks.length > 200) return;
-    const rare = isRare(this.spec.rareEvery, id);
+  private refreshHole() {
+    const n = this.spec.n;
+    if (n > 1 && this.vis.owned === n - 1) {
+      let h = -1;
+      for (let i = 0; i < n; i++) {
+        if (this.shown[i] === 0) {
+          h = i;
+          break;
+        }
+      }
+      this.hole = h;
+    } else {
+      this.hole = -1;
+    }
+  }
+
+  private sparkRare(id: number) {
+    if (this.sparks.length > 160) return;
     const c = this.slot(id);
-    const count = rare ? 18 : this.layout.tile < 12 ? 2 : 6;
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < 16; i++) {
       const a = Math.random() * Math.PI * 2;
-      const v = (rare ? 90 : 55) + Math.random() * (rare ? 150 : 70);
+      const v = 160 + Math.random() * 300;
       this.sparks.push({
         x: c.x,
         y: c.y,
         vx: Math.cos(a) * v,
-        vy: Math.sin(a) * v - 20,
+        vy: Math.sin(a) * v - 40,
         age: 0,
-        life: 0.35 + Math.random() * (rare ? 0.5 : 0.25),
-        size: rare ? 2 + Math.random() * 3 : 1.5 + Math.random() * 2,
-        color: rare ? (i % 2 ? "#FFF3C4" : GOLD) : PALETTE[colorOf(id)],
+        life: 0.4 + Math.random() * 0.5,
+        size: 4 + Math.random() * 7,
+        color: i % 2 ? "#FFF3C4" : GOLD,
       });
     }
-    if (this.sparks.length > 400) this.sparks.splice(0, this.sparks.length - 400);
   }
 
   play(results: PackResult[], o: PlayOptions = {}) {
     if (this.dead || results.length === 0) return;
     this.measure();
     const instant = Boolean(o.instant) || this.reduced;
-    const anchors = this.opts.anchors();
-    const f0 = this.fx.getBoundingClientRect();
-    const mouth = { x: anchors.mouth.x - f0.left, y: anchors.mouth.y - f0.top };
-    const pile = { x: anchors.pile.x - f0.left, y: anchors.pile.y - f0.top };
-    const friends = anchors.friends.map((p) => ({ x: p.x - f0.left, y: p.y - f0.top }));
+    const friends = this.opts.friends().map((el) => this.toScene(el));
     const now = performance.now();
     const many = results.length > 1;
-    const gap = many ? 105 : 0;
-    const flight = many ? 330 : o.fast ? 300 : 470;
-    const stagger = many ? 24 : o.fast ? 30 : 60;
-    const lead = many || o.fast ? 60 : 190;
+    const gap = many ? 110 : 0;
+    const open = instant || o.fast ? 0 : many ? 100 : 230;
+    const flight = o.fast ? 260 : 300;
     const maxSlots = many ? 2 : 6;
     const swapFlight = many ? 280 : 340;
     const swapGap = many ? 50 : 70;
@@ -418,6 +401,7 @@ export class Director {
     const rare: number[] = [];
     let last = now;
     let done = false;
+    const tileEnd = this.layout.tile;
 
     results.forEach((r, j) => {
       const tPack = now + j * gap;
@@ -443,51 +427,66 @@ export class Director {
         this.dirty = true;
         return;
       }
+      const isLast = j === results.length - 1;
       this.at(tPack, () => {
         this.vis.packs = r.pack;
         this.dirty = true;
+        if (open > 0) this.opts.onOpen(open, isLast);
       });
-      let t = tPack;
-      let prev = tPack;
-      r.draws.forEach((d, i) => {
-        const land = Math.max(tPack + lead + flight + i * stagger, prev + 3);
-        prev = land;
-        t = land;
-        const slot = d.fresh;
-        this.flyer(this.makeFlyer(slot ? "new" : "dup", d.id, mouth, slot ? null : pile, land - flight, flight));
-        this.at(land, () => this.land(d.id));
+      const tLand = tPack + open + flight;
+      const k = r.draws.length;
+      r.draws.forEach((d, m) => {
+        const x0 = PACK.x + (m - (k - 1) / 2) * 14;
+        const to = d.fresh ? this.slot(d.id) : { x: PILE.x, y: PILE.y };
+        this.flyer({
+          id: d.id,
+          kind: d.fresh ? "new" : "dup",
+          x0,
+          y0: MOUTH_Y,
+          x1: to.x,
+          y1: to.y,
+          slotEnd: d.fresh,
+          t0: tLand - flight,
+          dur: flight,
+          arc: d.fresh ? 160 : 70,
+          size0: 30,
+          size1: d.fresh ? tileEnd : 18,
+        });
+        this.at(tLand, () => this.land(d.id));
         if (d.fresh) {
           fresh++;
           if (isRare(this.spec.rareEvery, d.id)) rare.push(d.id);
         } else dups++;
       });
+      let t = tLand;
       let slot = -1;
-      let open = false;
-      const base = t + (many ? 40 : 90);
+      let openPair = false;
+      const base = tLand + (many ? 40 : 120);
       for (const w of r.swaps) {
         if (w.dir === "out") {
           slot++;
-          open = true;
-        } else if (open && !w.gift) {
-          open = false;
+          openPair = true;
+        } else if (openPair && !w.gift) {
+          openPair = false;
         } else {
           slot++;
-          open = false;
+          openPair = false;
         }
-        const shown = slot < maxSlots;
+        const shownSwap = slot < maxSlots;
         const dep = base + Math.min(slot, maxSlots - 1) * swapGap;
         const land = dep + swapFlight;
-        const fp = friends[Math.min(Math.max(w.friend, 0), Math.max(0, friends.length - 1))] ?? { x: mouth.x, y: mouth.y - 200 };
+        const fp = friends[Math.min(Math.max(w.friend, 0), Math.max(0, friends.length - 1))] ?? { x: PACK.x, y: 1000 };
         if (w.dir === "in") {
           swapsIn++;
-          if (shown) this.flyer(this.makeFlyer("in", w.id, fp, null, dep, swapFlight));
-          this.at(shown ? land : land - swapFlight + 10, () => this.land(w.id));
+          const to = this.slot(w.id);
+          if (shownSwap) this.flyer({ id: w.id, kind: "in", x0: fp.x, y0: fp.y, x1: to.x, y1: to.y, slotEnd: true, t0: dep, dur: swapFlight, arc: 110, size0: 30, size1: tileEnd });
+          this.at(shownSwap ? land : dep + 10, () => this.land(w.id));
         } else {
           swapsOut++;
-          if (shown) this.flyer(this.makeFlyer("out", w.id, pile, fp, dep, swapFlight));
+          if (shownSwap) this.flyer({ id: w.id, kind: "out", x0: PILE.x, y0: PILE.y, x1: fp.x, y1: fp.y, slotEnd: false, t0: dep, dur: swapFlight, arc: 90, size0: 22, size1: 10 });
           this.at(dep, () => this.leave(w.id));
         }
-        t = Math.max(t, shown ? land : dep + 10);
+        t = Math.max(t, shownSwap ? land : dep + 10);
       }
       last = Math.max(last, t);
       done = r.done;
@@ -512,32 +511,14 @@ export class Director {
   }
 
   private finish() {
+    this.hole = -1;
     this.celebrate();
     this.opts.onComplete();
   }
 
   celebrate() {
     if (this.reduced) return;
-    const colors = [...PALETTE, GOLD, GOLD];
-    const w = this.fw;
-    const total = w < 520 ? 90 : 150;
-    for (let i = 0; i < total; i++) {
-      const fromTop = i % 3 !== 0;
-      const size = 5 + Math.random() * 7;
-      this.pieces.push({
-        x: fromTop ? Math.random() * w : w / 2 + (Math.random() - 0.5) * 60,
-        y: fromTop ? -20 - Math.random() * 120 : this.fh * 0.62,
-        vx: fromTop ? (Math.random() - 0.5) * 80 : (Math.random() - 0.5) * 520,
-        vy: fromTop ? 120 + Math.random() * 180 : -380 - Math.random() * 380,
-        rot: Math.random() * 6.28,
-        vr: (Math.random() - 0.5) * 12,
-        w: size,
-        h: size * (0.5 + Math.random() * 0.7),
-        color: colors[i % colors.length],
-        age: -Math.random() * 0.5,
-        life: 2.6 + Math.random() * 1.6,
-      });
-    }
+    this.rays = { x: 180, y: 1470, t0: performance.now() };
     this.wake();
   }
 
@@ -560,12 +541,13 @@ export class Director {
       this.copies = copies;
       this.vis.owned = owned;
       this.vis.doubles = copies - owned;
+      this.refreshHole();
       this.dirty = true;
     }
   }
 
   private busy() {
-    return this.events.length > 0 || this.flyers.length > 0 || this.pulses.length > 0 || this.sparks.length > 0 || this.pieces.length > 0;
+    return this.events.length > 0 || this.flyers.length > 0 || this.flashes.length > 0 || this.sparks.length > 0 || this.rays !== null || this.hole >= 0;
   }
 
   private wake() {
@@ -577,6 +559,7 @@ export class Director {
   private tick = (now: number) => {
     this.raf = 0;
     if (this.dead) return;
+    this.clock = now;
     const dt = Math.min(0.05, Math.max(0, (now - this.lastTick) / 1000));
     this.lastTick = now;
     if (this.events.length > 0) {
@@ -587,6 +570,7 @@ export class Director {
       }
     }
     this.drawFx(now, dt);
+    this.clock = 0;
     if (this.needsSync && this.events.length === 0 && this.flyers.length === 0) {
       this.needsSync = false;
       this.syncTruth();
@@ -598,10 +582,55 @@ export class Director {
     if (this.busy()) this.raf = requestAnimationFrame(this.tick);
   };
 
+  private pill(ctx: CanvasRenderingContext2D, label: string, cx: number, cy: number, color: string, size: number) {
+    ctx.font = `800 ${size}px ${this.font}`;
+    const w = ctx.measureText(label).width + size * 1.1;
+    const h = size * 1.55;
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 20;
+    ctx.globalAlpha = 0.35;
+    rr(ctx, cx - w / 2, cy - h / 2, w, h, h / 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 0.95;
+    rr(ctx, cx - w / 2, cy - h / 2, w, h, h / 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = INK;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(label, cx, cy + size * 0.36);
+  }
+
   private drawFx(now: number, dt: number) {
     const ctx = this.fctx;
-    ctx.clearRect(0, 0, this.fw, this.fh);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.fx.width, this.fx.height);
+    ctx.restore();
     const L = this.layout;
+
+    if (this.flashes.length > 0) {
+      const keep: Flash[] = [];
+      for (const f of this.flashes) {
+        const age = (now - f.t0) / 1000;
+        if (age >= 0.35) continue;
+        keep.push(f);
+        if (age < 0) continue;
+        const c = this.slot(f.id);
+        const k = L.tile / 22.5;
+        const sz = L.tile + 4 * k;
+        ctx.globalAlpha = 0.9 * (1 - age / 0.35);
+        rr(ctx, c.x - sz / 2, c.y - sz / 2, sz, sz, 5 * k);
+        ctx.fillStyle = WHITE;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      this.flashes = keep;
+    }
 
     if (this.flyers.length > 0) {
       const keep: Flyer[] = [];
@@ -610,62 +639,51 @@ export class Director {
         if (u >= 1) continue;
         keep.push(f);
         if (u < 0) continue;
-        const end = f.slotEnd ? this.slot(f.id) : { x: f.bx, y: f.by };
-        const mx = (f.ax + end.x) / 2;
-        const my = (f.ay + end.y) / 2;
-        const cx = mx - (end.y - f.ay) * f.bend;
-        const cy = my + (end.x - f.ax) * f.bend - 30;
-        const e = u < 0.18 ? 0 : ease.io((u - 0.18) / 0.82);
-        const k = u < 0.18 ? ease.out(u / 0.18) * 0.18 : 0.18 + e * 0.82;
-        const q = 1 - k;
-        const x = q * q * f.ax + 2 * q * k * cx + k * k * end.x;
-        const y = q * q * f.ay + 2 * q * k * cy + k * k * end.y;
-        const endSize = f.kind === "dup" ? 10 : f.kind === "out" ? 12 : L.tile;
-        const size = u < 0.18 ? f.size * lerp(0.3, 1, ease.back(u / 0.18)) : lerp(f.size, endSize, e);
-        const alpha = f.kind === "dup" || f.kind === "out" ? 1 - Math.max(0, (u - 0.75) / 0.25) : 1;
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.translate(x, y);
-        ctx.rotate(f.tilt * (1 - e));
-        if (isRare(this.spec.rareEvery, f.id) && f.kind !== "dup") {
-          ctx.shadowColor = GOLD;
-          ctx.shadowBlur = 16;
-        } else if (f.kind === "in") {
-          ctx.shadowColor = "#3FE0FF";
-          ctx.shadowBlur = 12;
+        const end = f.slotEnd ? this.slot(f.id) : { x: f.x1, y: f.y1 };
+        const swap = f.kind === "in" || f.kind === "out";
+        const q = swap ? ioCubic(u) : u * u * u;
+        const x = lerp(f.x0, end.x, q);
+        const y = lerp(f.y0, end.y, q) - f.arc * Math.sin(Math.PI * u);
+        const size = lerp(f.size0, f.size1, q);
+        const dupLike = f.kind === "dup" || f.kind === "out";
+        ctx.globalAlpha = f.kind === "out" ? 1 - Math.max(0, (u - 0.7) / 0.3) : 1;
+        rr(ctx, x - size / 2, y - size / 2, size, size, size * 0.178);
+        ctx.fillStyle = dupLike ? FLY_DUP : isRare(this.spec.rareEvery, f.id) ? GOLD : PALETTE[colorOf(f.id)];
+        ctx.fill();
+        if (f.kind === "in") {
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "#3FE0FF";
+          ctx.stroke();
         }
-        if (f.kind === "dup" || f.kind === "out") {
-          this.drawTile(ctx, 0, 0, size, f.id, true, 1);
-          ctx.globalAlpha = alpha * 0.5;
-          rr(ctx, -size / 2, -size / 2, size, size, size * 0.2);
-          ctx.fillStyle = "#6B7AA3";
-          ctx.fill();
-        } else {
-          this.drawTile(ctx, 0, 0, size, f.id, true, 1);
-        }
-        ctx.restore();
       }
+      ctx.globalAlpha = 1;
       this.flyers = keep;
     }
 
-    if (this.pulses.length > 0) {
-      const keep: Pulse[] = [];
-      for (const p of this.pulses) {
-        const u = (now - p.t0) / 420;
-        if (u >= 1) continue;
-        keep.push(p);
-        if (u < 0) continue;
-        const c = this.slot(p.id);
-        const s = 1 + (p.rare ? 0.55 : 0.3) * (1 - ease.out(u));
-        const size = L.tile * s;
-        this.drawTile(ctx, c.x, c.y, size, p.id, true, 1);
-        ctx.globalAlpha = (1 - u) * 0.6;
-        rr(ctx, c.x - size / 2, c.y - size / 2, size, size, Math.max(1.5, size * 0.2));
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-      this.pulses = keep;
+    if (this.hole >= 0) {
+      const c = this.slot(this.hole);
+      const g = 0.5 + 0.5 * Math.sin(now / 1000 * 7);
+      const d = L.tile;
+      const ring = Math.max(34, d * 0.95) + 6 * g;
+      ctx.save();
+      ctx.shadowColor = CORAL;
+      ctx.shadowBlur = 16;
+      ctx.globalAlpha = 0.4 + 0.4 * g;
+      rr(ctx, c.x - d / 2 - 5, c.y - d / 2 - 5, d + 10, d + 10, 7);
+      ctx.fillStyle = CORAL;
+      ctx.fill();
+      ctx.restore();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = CORAL;
+      rr(ctx, c.x - d / 2 - 3, c.y - d / 2 - 3, d + 6, d + 6, 6);
+      ctx.stroke();
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, ring, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      this.pill(ctx, "1 missing", Math.min(Math.max(c.x, 140), VW - 140), c.y - Math.max(52, ring + 22), CORAL, 24);
     }
 
     if (this.sparks.length > 0) {
@@ -674,7 +692,7 @@ export class Director {
         s.age += dt;
         if (s.age >= s.life) continue;
         keep.push(s);
-        s.vy += 260 * dt;
+        s.vy += 700 * dt;
         s.x += s.vx * dt;
         s.y += s.vy * dt;
         ctx.globalAlpha = 1 - s.age / s.life;
@@ -685,28 +703,28 @@ export class Director {
       this.sparks = keep;
     }
 
-    if (this.pieces.length > 0) {
-      const keep: Piece[] = [];
-      for (const p of this.pieces) {
-        p.age += dt;
-        if (p.age >= p.life || p.y > this.fh + 40) continue;
-        keep.push(p);
-        if (p.age < 0) continue;
-        p.vy += 520 * dt;
-        p.vx *= 1 - 0.8 * dt;
-        p.vy *= 1 - 0.5 * dt;
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.rot += p.vr * dt;
-        ctx.save();
-        ctx.globalAlpha = Math.min(1, (p.life - p.age) * 1.5);
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-        ctx.restore();
+    if (this.rays) {
+      const tc = (now - this.rays.t0) / 1000;
+      if (tc > 0.25) {
+        this.rays = null;
+      } else if (tc >= 0) {
+        const u = tc / 0.25;
+        const R = 150;
+        ctx.lineCap = "round";
+        ctx.lineWidth = R * 0.04;
+        ctx.strokeStyle = WHITE;
+        ctx.globalAlpha = 1 - u;
+        for (let k = 0; k < 9; k++) {
+          const ang = (k * 2 * Math.PI) / 9 + 0.3;
+          const r0 = R * (0.3 + 0.55 * u);
+          const r1 = R * (0.3 + 0.55 * u + 0.22 * (1 - u));
+          ctx.beginPath();
+          ctx.moveTo(this.rays.x + r0 * Math.cos(ang), this.rays.y + r0 * Math.sin(ang));
+          ctx.lineTo(this.rays.x + r1 * Math.cos(ang), this.rays.y + r1 * Math.sin(ang));
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
       }
-      this.pieces = keep;
     }
   }
 }

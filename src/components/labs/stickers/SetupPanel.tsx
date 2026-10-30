@@ -22,9 +22,9 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   );
 }
 
-function Seg<T extends string | number>({ value, options, onChange, label, pad }: { value: T; options: { v: T; label: string }[]; onChange: (v: T) => void; label: string; pad: string }) {
+function Seg<T extends string | number>({ value, options, onChange, label }: { value: T; options: { v: T; label: string }[]; onChange: (v: T) => void; label: string }) {
   return (
-    <div role="group" aria-label={label} className={`grid auto-cols-fr grid-flow-col gap-1 rounded-2xl bg-navy-950/55 p-1 ring-1 ring-edge/20 ${pad}`}>
+    <div role="group" aria-label={label} className={`grid auto-cols-fr grid-flow-col gap-1 rounded-2xl bg-navy-950/55 p-1 ring-1 ring-edge/20`}>
       {options.map((o) => (
         <button
           key={String(o.v)}
@@ -49,13 +49,12 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
   const shown = unlocked ? draft : FREE_CONFIG;
   const patch = (p: Partial<Config>) => setDraft((d) => ({ ...d, ...p }));
   const isVideo = shown.n === VIDEO.n && shown.k === VIDEO.k;
-  const pad = unlocked ? "" : "pr-[78px]";
 
   return (
     <div className="space-y-4 pb-1 text-sm">
       <Section title="Album size" hint={`${fmt(shown.n)} stickers`}>
         <Locked label="Albums up to 980 stickers">
-          <div className={`rounded-2xl bg-navy-950/55 p-2.5 ring-1 ring-edge/20 ${pad}`}>
+          <div className="rounded-2xl bg-navy-950/55 p-2.5 ring-1 ring-edge/20">
             <div className="flex flex-wrap gap-1.5">
               {ALBUM_PRESETS.map((n) => (
                 <button
@@ -88,7 +87,7 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
 
       <Section title="Stickers per pack" hint={isVideo ? "like the video" : undefined}>
         <Locked label="Pack size">
-          <div className={`flex items-center gap-2 rounded-2xl bg-navy-950/55 p-1.5 ring-1 ring-edge/20 ${pad}`}>
+          <div className="flex items-center gap-2 rounded-2xl bg-navy-950/55 p-1.5 ring-1 ring-edge/20">
             <button
               type="button"
               aria-label="Fewer stickers per pack"
@@ -119,7 +118,6 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
       <Section title="Rare stickers" hint="5× less often">
         <Locked label="Rare stickers">
           <Seg<RareEvery>
-            pad={pad}
             label="Rare stickers"
             value={shown.rareEvery}
             onChange={(v) => patch({ rareEvery: v })}
@@ -135,7 +133,6 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
       <Section title="Swap with friends" hint="trade doubles one for one">
         <Locked label="Swap with friends">
           <Seg<number>
-            pad={pad}
             label="Friends"
             value={shown.friends}
             onChange={(v) => patch({ friends: v })}
@@ -151,7 +148,7 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
             tap();
             onSim();
           }}
-          className={`flex h-14 w-full flex-col items-start justify-center rounded-2xl bg-navy-950/55 px-4 text-left ring-1 ring-edge/20 transition active:scale-[0.98] ${pad}`}
+          className={`flex h-14 w-full flex-col items-start justify-center rounded-2xl bg-navy-950/55 px-4 text-left ring-1 ring-edge/20 transition active:scale-[0.98]`}
         >
           <span className="font-bold">10,000 collectors</span>
           <span className="text-xs font-semibold text-mist">Histogram and swap test</span>

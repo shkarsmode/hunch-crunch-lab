@@ -73,18 +73,14 @@ export default function StickerLab() {
 
   return (
     <>
-      <LabShell title="Fill the sticker album" shortTitle="Sticker album" emoji="📒" video={VIDEO_ID} right={right}>
+      <LabShell title="Fill the sticker album" shortTitle="Sticker album" emoji="📒" video={VIDEO_ID} right={right} grid={false}>
         <Table key={tableKey} config={config} onFinished={(packs) => setFinished({ round, packs })} onAgain={again} onSim={openSim} />
       </LabShell>
       <Sheet open={setupOpen} onClose={() => setSetupOpen(false)} title="New album">
-        <div inert={!setupOpen}>
-          <SetupPanel key={setupKey} config={config} onApply={apply} onSim={openSim} />
-        </div>
+        <SetupPanel key={setupKey} config={config} onApply={apply} onSim={openSim} />
       </Sheet>
       <Sheet open={simOpen} onClose={() => setSimOpen(false)} title="10,000 collectors">
-        <div inert={!simOpen}>
-          <SimPanel key={simKey} config={config} yourPacks={yourPacks} active={simOpen} />
-        </div>
+        <SimPanel key={simKey} config={config} yourPacks={yourPacks} active={simOpen} />
       </Sheet>
     </>
   );

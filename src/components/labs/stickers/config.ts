@@ -28,7 +28,7 @@ export const VIDEO = {
   collectors: 10000,
 };
 
-export const PALETTE = ["#3FE0FF", "#FF5C7A", "#3EE6A0", "#B48CFF", "#FF9F43", "#F4F6FB", "#4D8BFF", "#FF7AD9"];
+export { PAL as PALETTE } from "./video";
 
 export const FRIEND_FACES = ["🦊", "🐼", "🐸", "🦄", "🐙"];
 

@@ -1,91 +1,82 @@
-export type RipMode = "one" | "ten";
+export class PackFx {
+  private root: HTMLElement;
+  private reduced: boolean;
+  private anims: Animation[] = [];
+  private idleAnim: Animation | null = null;
+  private timers: number[] = [];
 
-export function ripPack(root: HTMLElement, mode: RipMode, reduced: boolean, k: number) {
-  const part = (name: string) => root.querySelector<SVGGElement>(`[data-part="${name}"]`);
-  const body = part("body");
-  const top = part("top");
-  const glow = part("glow");
-  const anims: Animation[] = [];
-  const timers: number[] = [];
-
-  const run = (el: Element | null, frames: Keyframe[], opts: KeyframeAnimationOptions) => {
-    if (!el || typeof el.animate !== "function") return;
-    anims.push(el.animate(frames, opts));
-  };
-
-  const ten = mode === "ten";
-  const amp = ten ? 7 : 4;
-  const shake = ten ? 460 : 240;
-  const tearAt = ten ? 300 : 140;
-  const dropAt = ten ? 640 : Math.min(520, 220 + (k - 1) * 60);
-  const reformAt = ten ? 960 : dropAt + 360;
-
-  if (reduced) {
-    run(root, [{ opacity: 0.4 }, { opacity: 1 }], { duration: 260, easing: "ease-out" });
-    return () => {
-      anims.forEach((a) => a.cancel());
-    };
+  constructor(root: HTMLElement) {
+    this.root = root;
+    this.reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
-  run(
-    body,
-    [
-      { transform: "rotate(0deg) scale(1)" },
-      { transform: `rotate(${-amp}deg) scale(0.96)`, offset: 0.2 },
-      { transform: `rotate(${amp}deg) scale(0.96)`, offset: 0.4 },
-      { transform: `rotate(${-amp * 0.8}deg) scale(0.97)`, offset: 0.6 },
-      { transform: `rotate(${amp * 0.6}deg) scale(0.98)`, offset: 0.8 },
-      { transform: "rotate(0deg) scale(1.02)" },
-    ],
-    { duration: shake, easing: "ease-in-out" },
-  );
+  private part(name: string) {
+    return this.root.querySelector<SVGGElement>(`[data-part="${name}"]`);
+  }
 
-  run(
-    top,
-    [
-      { transform: "translate(0px, 0px) rotate(0deg)", opacity: 1 },
-      { transform: "translate(-34px, -58px) rotate(-48deg)", opacity: 0 },
-    ],
-    { duration: 380, delay: tearAt, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)", fill: "forwards" },
-  );
+  private run(el: Element | null, frames: Keyframe[], opts: KeyframeAnimationOptions) {
+    if (!el || typeof el.animate !== "function") return null;
+    const a = el.animate(frames, opts);
+    this.anims.push(a);
+    return a;
+  }
 
-  run(
-    glow,
-    [
-      { opacity: 0, transform: "scale(0.3)" },
-      { opacity: 1, transform: "scale(1)", offset: 0.35 },
-      { opacity: 0, transform: `scale(${ten ? 2.4 : 1.6})` },
-    ],
-    { duration: ten ? 620 : 440, delay: tearAt - 20, easing: "ease-out", fill: "forwards" },
-  );
+  private clear() {
+    this.timers.forEach((t) => window.clearTimeout(t));
+    this.timers = [];
+    this.anims.forEach((a) => a.cancel());
+    this.anims = [];
+    this.idleAnim?.cancel();
+    this.idleAnim = null;
+  }
 
-  run(
-    body,
-    [
-      { transform: "translateY(0px) scale(1)", opacity: 1 },
-      { transform: "translateY(22px) scale(0.9)", opacity: 0 },
-    ],
-    { duration: 260, delay: dropAt, easing: "ease-in", fill: "forwards" },
-  );
+  idle() {
+    this.clear();
+    if (this.reduced || typeof this.root.animate !== "function") return;
+    this.idleAnim = this.root.animate(
+      [
+        { transform: "translateY(0px) scale(1)" },
+        { transform: "translateY(-6px) scale(1.04)", offset: 0.5 },
+        { transform: "translateY(0px) scale(1)" },
+      ],
+      { duration: 1047, iterations: Infinity, easing: "ease-in-out" },
+    );
+  }
 
-  timers.push(
-    window.setTimeout(() => {
-      anims.forEach((a) => a.cancel());
-      anims.length = 0;
-      run(
-        root,
-        [
-          { transform: "translateY(16px) scale(0.55)", opacity: 0 },
-          { transform: "translateY(-3px) scale(1.07)", opacity: 1, offset: 0.65 },
-          { transform: "translateY(0px) scale(1)", opacity: 1 },
-        ],
-        { duration: 440, easing: "cubic-bezier(0.2, 0.9, 0.3, 1)" },
-      );
-    }, reformAt),
-  );
+  open(ms: number, last: boolean) {
+    this.clear();
+    if (this.reduced) {
+      this.run(this.root, [{ opacity: 0.5 }, { opacity: 1 }], { duration: 200 });
+      if (last) this.timers.push(window.setTimeout(() => this.idle(), 400));
+      return;
+    }
+    const d = Math.max(60, ms);
+    this.run(this.part("flap"), [{ transform: "translateY(0px) rotate(0deg)", opacity: 1 }, { transform: "translateY(-60px) rotate(-25deg)", opacity: 0 }], {
+      duration: d,
+      easing: "linear",
+      fill: "forwards",
+    });
+    this.run(this.part("body"), [{ transform: "scaleY(1)" }, { transform: "scaleY(0.8667)" }], { duration: d, easing: "linear", fill: "forwards" });
+    this.run(this.root, [{ transform: "scale(1)" }, { transform: "scale(1.08)", offset: 0.5 }, { transform: "scale(1)" }], { duration: d, easing: "ease-in-out" });
+    if (!last) return;
+    this.timers.push(
+      window.setTimeout(() => {
+        this.clear();
+        this.run(
+          this.root,
+          [
+            { transform: "scale(0.6)", opacity: 0 },
+            { transform: "scale(1.06)", opacity: 1, offset: 0.65 },
+            { transform: "scale(1)", opacity: 1 },
+          ],
+          { duration: 360, easing: "cubic-bezier(0.2, 0.9, 0.3, 1)" },
+        );
+        this.timers.push(window.setTimeout(() => this.idle(), 380));
+      }, d + 420),
+    );
+  }
 
-  return () => {
-    timers.forEach((t) => window.clearTimeout(t));
-    anims.forEach((a) => a.cancel());
-  };
+  destroy() {
+    this.clear();
+  }
 }
