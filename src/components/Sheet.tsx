@@ -24,7 +24,7 @@ export default function Sheet({ open, onClose, title, children }: { open: boolea
         role="dialog"
         aria-label={title}
         inert={!open}
-        className={`glass absolute inset-x-0 bottom-0 max-h-[78dvh] overflow-y-auto rounded-t-[22px] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl transition-transform duration-300 ease-out no-scrollbar lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-18 lg:max-h-none lg:w-[380px] lg:rounded-[22px] ${
+        className={`absolute inset-x-0 bottom-0 max-h-[78dvh] border border-hair bg-navy-850 overflow-y-auto rounded-t-[22px] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl transition-transform duration-300 ease-out no-scrollbar lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-18 lg:max-h-none lg:w-[380px] lg:rounded-[22px] ${
           open ? "translate-y-0 lg:translate-x-0" : "translate-y-full lg:translate-x-[110%] lg:translate-y-0"
         }`}
       >
