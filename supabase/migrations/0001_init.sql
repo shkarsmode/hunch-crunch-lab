@@ -96,3 +96,4 @@ revoke all on function public.bump_visit(date, text, text, text, text) from publ
 revoke all on function public.claim_founder(uuid) from public, anon, authenticated;
 grant execute on function public.bump_visit(date, text, text, text, text) to service_role;
 grant execute on function public.claim_founder(uuid) to service_role;
+grant all on public.profiles, public.visit_daily, public.ideas, public.flags to service_role;
