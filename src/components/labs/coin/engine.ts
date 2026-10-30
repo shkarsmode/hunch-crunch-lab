@@ -270,6 +270,19 @@ export function realCoin(a: Analysis, next: Next = makeRandom()): Judged {
   return judge(randomSeq(a.n, next), a.sw, a.ru);
 }
 
+export function passZone(dist: Dist): { lo: number; hi: number; share: number } | null {
+  let lo = -1;
+  let hi = -1;
+  let sum = 0;
+  for (let v = 0; v < dist.counts.length; v++) {
+    if (dist.flagged[v] || dist.counts[v] === 0) continue;
+    if (lo < 0) lo = v;
+    hi = v;
+    sum += dist.counts[v];
+  }
+  return lo < 0 ? null : { lo, hi, share: sum / dist.values.length };
+}
+
 export type Domain = { lo: number; hi: number };
 
 export function domainFor(dist: Dist, marks: readonly number[]): Domain {

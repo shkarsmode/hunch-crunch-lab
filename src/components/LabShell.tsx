@@ -13,6 +13,7 @@ export default function LabShell({
   video,
   children,
   right,
+  grid = true,
 }: {
   title: string;
   shortTitle?: string;
@@ -20,11 +21,12 @@ export default function LabShell({
   video?: string;
   children: ReactNode;
   right?: ReactNode;
+  grid?: boolean;
 }) {
   const { unlocked, upsell } = useAccess();
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-navy-900 pt-[env(safe-area-inset-top)]">
-      <div className="pointer-events-none absolute inset-0 lab-grid opacity-60" />
+      {grid && <div className="pointer-events-none absolute inset-0 lab-grid opacity-60" />}
       <header className="relative z-20 flex h-14 shrink-0 items-center gap-2 px-3">
         <Link href="/#lab" className="flex h-10 items-center gap-1.5 rounded-full pl-2 pr-3 text-sm font-semibold text-mist ring-1 ring-edge/25 transition hover:text-ink active:scale-95" aria-label="Back to the lab">
           <span aria-hidden>←</span>

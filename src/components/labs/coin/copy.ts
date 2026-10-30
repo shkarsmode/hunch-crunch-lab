@@ -3,7 +3,7 @@ import type { Analysis, Judged, Tell } from "./engine";
 
 export const LESSON = "A real coin has no memory. People switch too often and dodge long runs.";
 
-export type Words = { head: string; line: string; facts: string };
+export type Words = { head: string; line: string; facts: string; cap: string };
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -47,25 +47,28 @@ export function pctText(p: number): string {
 export function words(a: Analysis, j: Judged): Words {
   const n = a.n;
   const fooled = `You fooled ${fmt(COINS)} coins.`;
+  const fooledCap = `You fooled [m]${fmt(COINS)}[/] coins.`;
   const caught = `${cap(valueText(j.lead, n))}. ${reach(j.lead)}${odds(j.lead, n)}${j.also ? ` ${alsoText(j.also)}` : ""}`;
   switch (j.tone) {
     case "smooth":
-      return { head: "Too smooth.", line: "Real coins streak more.", facts: caught };
+      return { head: "Too smooth.", cap: "[r]Too smooth.[/]", line: "Real coins streak more.", facts: caught };
     case "streaky":
-      return { head: "Too streaky.", line: "A real coin switches about half the time.", facts: caught };
+      return { head: "Too streaky.", cap: "[r]Too streaky.[/]", line: "A real coin switches about half the time.", facts: caught };
     case "short":
-      return { head: "No long streaks.", line: "Real coins run into them.", facts: caught };
+      return { head: "No long streaks.", cap: "[r]No long streaks.[/]", line: "Real coins run into them.", facts: caught };
     case "long":
-      return { head: "That streak is too long.", line: "Real coins streak, just not that far.", facts: caught };
+      return { head: "That streak is too long.", cap: "[r]That streak[/]|[r]is too long.[/]", line: "Real coins streak, just not that far.", facts: caught };
     case "close":
       return {
         head: fooled,
+        cap: fooledCap,
         line: "Just barely. That was close.",
         facts: `${j.sw.value} switches, longest streak ${j.ru.value}. About ${Math.max(1, Math.round(j.lead.odd * 100))} in 100 real coins look this odd, so the detector let you through.`,
       };
     default:
       return {
         head: fooled,
+        cap: fooledCap,
         line: "Your flips look just like a real coin's.",
         facts: `${j.sw.value} switches and a longest streak of ${j.ru.value}. Real coins average ${expectedSwitches(n).toFixed(1)} switches. Nine in ten have a longest streak of ${a.ru.p5} to ${a.ru.p95}.`,
       };
@@ -86,13 +89,13 @@ export function shareLine(a: Analysis, j: Judged, url: string, streak: number): 
   return `🪙 A real-coin detector caught my fake flips. ${cap(valueText(j.lead, a.n))}. ${reach(j.lead)} Can you do better? ${url}`;
 }
 
-export function hint(len: number, n: number): string {
+export function hintCaption(len: number, n: number): { key: string; cap: string; sub?: string } {
   const left = n - len;
-  if (len === 0) return `Make ${n} flips that look like a real coin. Tap H or T, no planning.`;
-  if (left === 1) return "Last one. Lock it in!";
+  if (len === 0) return { key: "start", cap: `Make [g]${n} flips[/]|that look like a [m]real coin[/].`, sub: "Tap H or T, no planning." };
+  if (left === 1) return { key: "last", cap: "Last one.|[g]Lock it in![/]" };
   const r = len / n;
-  if (r < 0.25) return "Go on. A real coin has no plan.";
-  if (r < 0.5) return "Keep it messy.";
-  if (r < 0.75) return "Halfway there. Trust your gut.";
-  return `${left} to go. Don't overthink it.`;
+  if (r < 0.25) return { key: "early", cap: "Go on.|A real coin has [g]no plan[/]." };
+  if (r < 0.5) return { key: "mid", cap: "Keep it [g]messy[/]." };
+  if (r < 0.75) return { key: "half", cap: "[g]Halfway[/] there.|Trust your gut." };
+  return { key: "late", cap: `[g]${left}[/] to go.|Don't overthink it.` };
 }

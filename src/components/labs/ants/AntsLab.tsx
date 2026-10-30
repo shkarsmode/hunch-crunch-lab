@@ -363,6 +363,7 @@ export default function AntsLab() {
       title="Two ants, same 2 rules"
       shortTitle="Two ants"
       emoji="🐜"
+      grid={false}
       video="qKFPDHmAR4Q"
       right={
         <button type="button" onClick={() => setInfo(true)} className="grid h-10 w-10 place-items-center rounded-full font-black text-mist ring-1 ring-edge/25 hover:text-ink" aria-label="How it works">

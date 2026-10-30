@@ -1,112 +1,34 @@
-"use client";
-
-import { useEffect, useState, type ReactNode } from "react";
-import Crunchy, { type CrunchyMood } from "@/components/Crunchy";
-import { COINS, fmt } from "./engine";
-import { rampShown, reducedMotion } from "./fx";
-
-export function Host({
-  mood,
-  look,
-  wiggle = false,
-  badge,
-  className = "",
-  children,
-}: {
-  mood: CrunchyMood;
-  look: { x: number; y: number };
-  wiggle?: boolean;
-  badge?: ReactNode;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className={`flex items-end gap-2.5 ${className}`}>
-      <div className={`shrink-0 ${wiggle ? "animate-wiggle" : ""}`}>
-        <Crunchy size={76} mood={mood} look={look} />
-      </div>
-      <div className="glass relative flex min-h-[88px] min-w-0 flex-1 flex-col justify-center rounded-3xl rounded-bl-lg px-4 py-3" aria-live="polite">
-        {badge}
-        {children}
-      </div>
-    </div>
-  );
-}
-
-export function Panel({ title, right, children, className = "" }: { title: string; right?: ReactNode; children: ReactNode; className?: string }) {
-  return (
-    <section className={`rounded-3xl bg-navy-850/70 px-3.5 pb-3 pt-2.5 ring-1 ring-edge/20 ${className}`}>
-      <header className="mb-2 flex h-6 items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-mist">
-        <span>{title}</span>
-        {right}
-      </header>
-      {children}
-    </section>
-  );
-}
-
-export function Counter({ to, live, ms }: { to: number; live: boolean; ms: number }) {
-  const [shown, setShown] = useState(0);
-  useEffect(() => {
-    if (!live) return;
-    if (reducedMotion()) {
-      const id = window.setTimeout(() => setShown(to), 0);
-      return () => window.clearTimeout(id);
-    }
-    let raf = 0;
-    const t0 = performance.now();
-    const frame = (now: number) => {
-      const u = Math.min(1, (now - t0) / ms);
-      setShown(Math.round(to * u));
-      if (u < 1) raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [live, to, ms]);
-  return <span className="num">{live ? shown : to}</span>;
-}
-
-export function RampCount({ live }: { live: boolean }) {
-  const [shown, setShown] = useState(0);
-  useEffect(() => {
-    if (!live) return;
-    if (reducedMotion()) {
-      const id = window.setTimeout(() => setShown(COINS), 0);
-      return () => window.clearTimeout(id);
-    }
-    let raf = 0;
-    const t0 = performance.now();
-    const frame = (now: number) => {
-      const s = rampShown(now - t0);
-      setShown(s);
-      if (s < COINS) raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [live]);
-  return <span className="num">{fmt(live ? shown : COINS)}</span>;
-}
+import { EXTRA, SEMI, V, u } from "./scene";
 
 export function ChartSkeleton() {
-  const heights = Array.from({ length: 20 }, (_, i) => Math.exp(-Math.pow((i - 9.5) / 3.3, 2) / 2));
-  const bw = 324 / 20;
+  const heights = Array.from({ length: 24 }, (_, i) => Math.exp(-Math.pow((i - 11.5) / 3.6, 2) / 2));
+  const bw = 810 / heights.length;
   return (
     <div aria-hidden>
-      <div className="mb-1 flex items-end justify-between gap-3 px-1">
-        <div className="space-y-1.5">
-          <div className="h-3 w-28 animate-pulse rounded-full bg-edge/20" />
-          <div className="h-3.5 w-36 animate-pulse rounded-full bg-edge/15" />
+      <div className="flex justify-around" style={{ width: u(870), marginLeft: "auto", marginRight: "auto", paddingBottom: u(26), opacity: 0.45 }}>
+        <div className="text-center">
+          <div style={{ ...SEMI, fontSize: u(28), lineHeight: 1.2, color: V.muted }}>REAL COINS</div>
+          <div className="num" style={{ ...EXTRA, fontSize: u(64), lineHeight: 1.15, color: V.white }}>
+            0
+          </div>
         </div>
-        <div className="h-3 w-24 animate-pulse rounded-full bg-edge/15" />
+        <div className="text-center">
+          <div style={{ ...SEMI, fontSize: u(28), lineHeight: 1.2, color: V.muted }}>MOST SWITCHES</div>
+          <div className="num" style={{ ...EXTRA, fontSize: u(64), lineHeight: 1.15, color: V.mint }}>
+            0
+          </div>
+        </div>
       </div>
-      <svg viewBox="0 0 340 198" className="block h-auto w-full">
-        <g className="animate-pulse">
-          {heights.map((h, i) => (
-            <rect key={i} x={8 + i * bw + 1} y={170 - h * 108} width={bw - 2} height={h * 108} rx={2} fill="#6F80B3" fillOpacity={0.16} />
-          ))}
-        </g>
-        <line x1={8} x2={332} y1={170} y2={170} stroke="#3A4C80" strokeWidth={1.5} />
-      </svg>
+      <div className="relative" style={{ width: u(870), aspectRatio: "870 / 570", marginLeft: "auto", marginRight: "auto", borderRadius: u(22), background: "rgb(12 20 48 / 0.9)" }}>
+        <svg viewBox="0 0 870 570" className="absolute inset-0 block h-full w-full">
+          <g className="animate-pulse">
+            {heights.map((h, i) => (
+              <rect key={i} x={30 + i * bw + 1} y={460 - h * 300} width={bw - 2} height={h * 300} fill={V.slate} fillOpacity={0.2} />
+            ))}
+          </g>
+          <line x1={30} x2={840} y1={460} y2={460} stroke={V.axis} strokeWidth={3} />
+        </svg>
+      </div>
     </div>
   );
 }

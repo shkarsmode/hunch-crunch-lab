@@ -1,13 +1,16 @@
 "use client";
 
+import { useEffect, useState, type CSSProperties } from "react";
 import { Locked, LockIcon, useAccess } from "@/components/access/AccessProvider";
+import type { CrunchyMood } from "@/components/Crunchy";
 import { expectedSwitches, percentile } from "./engine";
 import type { Analysis, Judged, Metric, Tell } from "./engine";
 import { LESSON, realWords } from "./copy";
 import type { Words } from "./copy";
-import FlipGrid from "./FlipGrid";
+import FlipPanel from "./FlipPanel";
 import HistChart from "./HistChart";
 import { CheckIcon, CopyIcon, CoinIcon, RepeatIcon } from "./Parts";
+import { EXTRA, Mascot, SEMI, V, u } from "./scene";
 
 function Status({ flagged }: { flagged: boolean }) {
   return (
@@ -15,9 +18,10 @@ function Status({ flagged }: { flagged: boolean }) {
       role="img"
       aria-label={flagged ? "flagged" : "passes"}
       title={flagged ? "flagged" : "passes"}
-      className={`grid size-[18px] shrink-0 place-items-center rounded-full ${flagged ? "bg-coral/20 text-coral" : "bg-mint/20 text-mint"}`}
+      className="grid shrink-0 place-items-center rounded-full"
+      style={{ width: u(52), height: u(52), background: `${flagged ? V.coral : V.mint}33`, color: flagged ? V.coral : V.mint }}
     >
-      <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <svg viewBox="0 0 24 24" style={{ width: u(30), height: u(30) }} fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         {flagged ? <path d="M7 7l10 10M17 7 7 17" /> : <path d="m5.5 12.5 4.5 4.5 8.5-9.5" />}
       </svg>
     </span>
@@ -31,21 +35,29 @@ function TellCard({ label, t, avg, active, locked = false, onPick }: { label: st
       role="tab"
       aria-selected={active}
       onClick={onPick}
-      className={`flex min-h-[104px] flex-col rounded-2xl p-3 text-left ring-1 transition active:scale-[0.98] ${
-        active ? "bg-gold/[0.07] ring-gold/60" : "bg-navy-900/40 ring-edge/20"
-      }`}
+      className="flex flex-col text-left transition active:scale-[0.98]"
+      style={{
+        minHeight: u(290),
+        padding: u(30),
+        borderRadius: u(22),
+        background: active ? "rgb(255 201 74 / 0.07)" : "rgb(12 20 48 / 0.94)",
+        border: `${u(3)} solid ${active ? "rgb(255 201 74 / 0.7)" : "rgb(169 182 211 / 0.3)"}`,
+        boxShadow: `0 0 ${u(32)} rgb(0 0 0 / 0.4)`,
+      }}
     >
-      <span className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-mist">
-        {label}
+      <span className="flex items-center justify-between gap-2" style={{ ...SEMI, fontSize: u(30), lineHeight: 1.2, color: V.muted }}>
+        {label.toUpperCase()}
         {locked && <LockIcon className="h-3.5 w-3.5 text-gold" />}
       </span>
-      <span className="mt-1.5 flex items-baseline gap-1.5">
-        <span className="display num text-[30px] font-black leading-none text-ink">{t.value}</span>
-        <span className="text-xs text-mist">real avg {avg}</span>
+      <span className="flex items-baseline" style={{ gap: u(14), marginTop: u(14) }}>
+        <span className="num" style={{ ...EXTRA, fontSize: u(92), lineHeight: 1, color: V.white }}>
+          {t.value}
+        </span>
+        <span style={{ ...SEMI, fontSize: u(32), color: V.muted }}>real avg {avg}</span>
       </span>
-      <span className="mt-auto flex items-center justify-between gap-2 pt-2 text-xs">
-        <span className="font-semibold text-ink">
-          {percentile(t.pct)} <span className="font-medium text-mist">percentile</span>
+      <span className="mt-auto flex items-center justify-between gap-2" style={{ paddingTop: u(22), fontSize: u(32) }}>
+        <span style={{ ...EXTRA, color: V.white }}>
+          {percentile(t.pct)} <span style={{ ...SEMI, color: V.muted }}>percentile</span>
         </span>
         <Status flagged={t.flagged} />
       </span>
@@ -56,6 +68,7 @@ function TellCard({ label, t, avg, active, locked = false, onPick }: { label: st
 type ChartCardProps = {
   a: Analysis;
   words: Words;
+  mood: CrunchyMood;
   live: boolean;
   ready: boolean;
   chart: Metric;
@@ -64,7 +77,21 @@ type ChartCardProps = {
   onDone: () => void;
 };
 
-export function ChartCard({ a, words, live, ready, chart, onChart, real, onDone }: ChartCardProps) {
+function Wow({ mood }: { mood: CrunchyMood }) {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    const id = window.setTimeout(() => setOn(false), 1900);
+    return () => window.clearTimeout(id);
+  }, []);
+  if (!on) return null;
+  return (
+    <div className="pointer-events-none absolute z-10 animate-pop" style={{ left: u(8), top: u(70) }}>
+      <Mascot width={150} mood={mood} look={{ x: 0.6, y: -0.5 }} />
+    </div>
+  );
+}
+
+export function ChartCard({ a, words, mood, live, ready, chart, onChart, real, onDone }: ChartCardProps) {
   const { unlocked, upsell } = useAccess();
   const j = a.you;
   const active: Metric = unlocked ? chart : "switches";
@@ -74,11 +101,23 @@ export function ChartCard({ a, words, live, ready, chart, onChart, real, onDone 
   const title = active === "switches" ? `Switches in ${a.n} flips` : `Longest streak in ${a.n} flips`;
 
   return (
-    <section className="glass rounded-3xl p-3">
-      <HistChart key={active} dist={dist} you={you} real={realTell} live={live} title={title} onDone={onDone} />
+    <section className="relative">
+      <HistChart
+        key={active}
+        dist={dist}
+        n={a.n}
+        you={you}
+        youTone={j.caught ? "bad" : "ok"}
+        real={realTell}
+        realTone={real && real.caught ? "bad" : "ok"}
+        live={live}
+        title={title}
+        onDone={onDone}
+      />
+      {ready && <Wow mood={mood} />}
       {ready && (
         <>
-          <div role="tablist" aria-label="Chart" className="mt-3 grid animate-rise grid-cols-2 gap-2">
+          <div role="tablist" aria-label="Chart" className="grid animate-rise grid-cols-2" style={{ width: u(876), marginLeft: "auto", marginRight: "auto", marginTop: u(44), gap: u(24) }}>
             <TellCard label="Switches" t={j.sw} avg={expectedSwitches(a.n).toFixed(1)} active={active === "switches"} onPick={() => onChart("switches")} />
             <TellCard
               label="Longest streak"
@@ -89,9 +128,9 @@ export function ChartCard({ a, words, live, ready, chart, onChart, real, onDone 
               onPick={() => (unlocked ? onChart("run") : upsell("The longest-run chart"))}
             />
           </div>
-          <div className="mt-3 animate-rise space-y-1.5 border-t border-edge/15 pt-3 text-[13px] leading-snug [animation-delay:90ms]">
-            <p className="text-ink/90">{words.facts}</p>
-            <p className="text-mist">{LESSON}</p>
+          <div className="animate-rise [animation-delay:90ms]" style={{ width: u(876), marginLeft: "auto", marginRight: "auto", marginTop: u(36), padding: `0 ${u(8)}`, ...SEMI, fontSize: u(38), lineHeight: 1.36 }}>
+            <p style={{ color: "rgb(244 246 251 / 0.92)" }}>{words.facts}</p>
+            <p style={{ color: V.muted, marginTop: u(16), fontSize: u(36) }}>{LESSON}</p>
           </div>
         </>
       )}
@@ -102,21 +141,43 @@ export function ChartCard({ a, words, live, ready, chart, onChart, real, onDone 
 export function RealPanel({ a, r }: { a: Analysis; r: Judged }) {
   const w = realWords(a, r);
   const stagger = Math.min(40, 700 / a.n);
+  const scanMs = stagger * a.n;
   return (
-    <section className="animate-rise rounded-3xl bg-navy-850/70 px-3.5 pb-3 pt-2.5 ring-1 ring-cyan/30">
-      <header className="mb-2 flex h-6 items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan">
-        <span>A real coin</span>
-        <span className={`rounded-full px-2 py-0.5 text-[11px] font-black normal-case tracking-normal text-navy-950 ${r.caught ? "bg-coral" : "bg-mint"}`}>{w.head}</span>
-      </header>
-      <FlipGrid key={r.seq} seq={r.seq} n={a.n} label="Flips from a real coin" ticks stagger={stagger} scanMs={stagger * a.n} />
-      <p className="mt-2 text-[13px] leading-snug text-mist">{w.line}</p>
+    <section className="animate-rise" style={{ width: u(1080) }}>
+      <FlipPanel
+        key={r.seq}
+        label="REAL"
+        seq={r.seq}
+        n={a.n}
+        mode="scan"
+        tone={r.caught ? "bad" : "ok"}
+        metric="switches"
+        value={r.sw.value}
+        stamp={r.caught ? "FAKE" : "REAL"}
+        stampDelay={scanMs + 150}
+        scanMs={scanMs}
+        stagger={stagger}
+      />
+      <p className="text-balance text-center" style={{ ...SEMI, fontSize: u(38), lineHeight: 1.36, color: V.muted, marginTop: u(26), padding: `0 ${u(70)}` }}>
+        {w.line}
+      </p>
     </section>
   );
 }
 
-const primary =
-  "flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gold px-4 text-[15px] font-black text-navy-950 shadow-[0_5px_0_#8f6414] transition active:translate-y-[3px] active:shadow-[0_2px_0_#8f6414]";
-const ghost = "flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-navy-800/80 px-4 text-[15px] font-bold text-ink ring-1 ring-edge/40 transition active:scale-[0.98]";
+function button(primary: boolean): CSSProperties {
+  return {
+    ...EXTRA,
+    width: "100%",
+    height: `max(48px, ${u(150)})`,
+    fontSize: `max(15px, ${u(46)})`,
+    borderRadius: 9999,
+    background: primary ? V.gold : "rgb(12 20 48 / 0.94)",
+    color: primary ? V.ink : V.white,
+    border: primary ? "none" : `${u(3)} solid rgb(169 182 211 / 0.4)`,
+    boxShadow: primary ? `0 0 ${u(44)} rgb(255 201 74 / 0.32)` : `0 0 ${u(32)} rgb(0 0 0 / 0.4)`,
+  };
+}
 
 type ActionsProps = {
   hasReal: boolean;
@@ -129,34 +190,35 @@ type ActionsProps = {
 export function Actions({ hasReal, copy, onNext, onReal, onShare }: ActionsProps) {
   const { unlocked } = useAccess();
   return (
-    <div className="grid animate-rise gap-2.5 [animation-delay:160ms]">
+    <div className="grid animate-rise [animation-delay:160ms]" style={{ width: u(876), marginLeft: "auto", marginRight: "auto", gap: u(30) }}>
       <Locked label="Endless rounds">
-        <button type="button" onClick={onNext} className={primary}>
+        <button type="button" onClick={onNext} className="flex items-center justify-center gap-2 transition active:scale-[0.98]" style={button(true)}>
           <RepeatIcon />
           {unlocked ? "Next round" : "Another round"}
         </button>
       </Locked>
       <Locked label="Let a real coin play">
-        <button type="button" onClick={onReal} className={ghost}>
+        <button type="button" onClick={onReal} className="flex items-center justify-center gap-2 transition active:scale-[0.98]" style={button(false)}>
           <CoinIcon />
           {hasReal ? "Flip another real coin" : "Let a real coin play"}
         </button>
       </Locked>
       <Locked label="Copying a share line">
-        <button type="button" onClick={onShare} className={ghost}>
+        <button type="button" onClick={onShare} className="flex items-center justify-center gap-2 transition active:scale-[0.98]" style={button(false)}>
           {copy.state === "ok" ? <CheckIcon className="h-4 w-4 text-mint" /> : <CopyIcon />}
           {copy.state === "ok" ? "Copied!" : "Copy share line"}
         </button>
       </Locked>
       {copy.state === "fail" && (
-        <label className="block text-xs text-mist">
+        <label className="block" style={{ ...SEMI, fontSize: u(34), color: V.muted }}>
           Copy this line yourself:
           <textarea
             readOnly
             value={copy.text}
             rows={3}
             onFocus={(e) => e.currentTarget.select()}
-            className="mt-1 w-full resize-none rounded-xl bg-navy-900/70 p-2 text-[13px] text-ink ring-1 ring-edge/30"
+            className="mt-1 w-full resize-none p-2"
+            style={{ ...SEMI, fontSize: u(36), color: V.white, borderRadius: u(22), background: "rgb(12 20 48 / 0.94)", border: `${u(3)} solid rgb(169 182 211 / 0.4)` }}
           />
         </label>
       )}

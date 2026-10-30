@@ -1,5 +1,6 @@
 import { COINS } from "./engine";
 import type { Side } from "./engine";
+import { V } from "./scene";
 
 export const SCAN_MS = 800;
 export const RAMP_DELAY = 300;
@@ -12,15 +13,14 @@ export function rampShown(t: number): number {
   return Math.floor(COINS * Math.pow(u, 1.7));
 }
 
-export const GOLD_FACE = "radial-gradient(circle at 34% 26%, #fff3c0 0%, #ffd870 24%, #ffc94a 52%, #e0a532 80%, #c98f22 100%)";
-export const CYAN_FACE = "radial-gradient(circle at 34% 26%, #e6fbff 0%, #8aeeff 26%, #3fe0ff 54%, #22b5d6 82%, #1a8fae 100%)";
-
 export function faceOf(side: Side): string {
-  return side === "H" ? GOLD_FACE : CYAN_FACE;
+  return `radial-gradient(circle closest-side, transparent 0 74%, rgb(10 15 31 / 0.18) 75% 83%, transparent 84%), ${side === "H" ? V.gold : V.cyan}`;
 }
 
 export function haptic(): void {
   try {
+    const activation = navigator.userActivation;
+    if (activation && !activation.hasBeenActive) return;
     navigator.vibrate?.(8);
   } catch {}
 }
@@ -52,12 +52,13 @@ export function toss(from: DOMRect, to: DOMRect, side: Side): void {
     height: `${d}px`,
     borderRadius: "50%",
     background: faceOf(side),
-    boxShadow: "0 3px 8px rgb(0 0 0 / 0.45)",
+    boxShadow: `0 ${d * 0.14}px ${Math.max(3, d * 0.22)}px rgb(0 0 0 / 0.4)`,
     display: "grid",
     placeItems: "center",
-    color: "#0B1020",
-    fontWeight: "900",
-    fontSize: `${d * 0.56}px`,
+    color: V.ink,
+    fontWeight: "800",
+    fontVariationSettings: '"opsz" 32',
+    fontSize: `${d * 0.575}px`,
     lineHeight: "1",
     pointerEvents: "none",
     zIndex: "70",
