@@ -10,6 +10,8 @@ function source(ref: string) {
     host = ref ? new URL(ref).hostname.replace(/^www\./, "") : "";
   } catch {}
   if (!host) return "direct";
+  // Landing back from Google sign-in is not a new visitor source.
+  if (/^accounts\.google\.|(^|\.)supabase\.co$/.test(host)) return "direct";
   if (/(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(host)) return "youtube";
   if (/(^|\.)(google|bing|duckduckgo|yahoo|yandex|ecosia)\./.test(host)) return "search";
   if (/(^|\.)(t\.co|twitter\.com|x\.com|reddit\.com|facebook\.com|instagram\.com|tiktok\.com|t\.me|discord\.com|linkedin\.com)$/.test(host)) return "social";
