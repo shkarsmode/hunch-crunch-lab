@@ -7,8 +7,8 @@ const contact = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
 
 export default function Page() {
   return (
-    <article className="mx-auto max-w-2xl px-4 pt-10 text-mist [&_h2]:display [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-black [&_h2]:text-ink [&_p]:mt-3">
-      <h1 className="display text-4xl font-black text-ink">Terms</h1>
+    <article className="mx-auto max-w-2xl px-4 pt-10 text-[15px] leading-relaxed text-ink/60 [&_h2]:mt-9 [&_h2]:text-[20px] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em] [&_h2]:text-ink [&_p]:mt-3">
+      <h1 className="headline text-[42px] leading-none text-ink">Terms</h1>
       <p>Updated October 29, 2026. By using Hunch Crunch Lab you agree to these simple rules.</p>
       <h2>The lab</h2>
       <p>The experiments are here for fun and learning, as they are. The setup from each video is free to play. We may add, change or retire experiments and features.</p>

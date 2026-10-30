@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import Emblem from "./Emblem";
+import Emblem from "@/components/ui/Emblem";
 import { TIERS } from "@/lib/tiers";
 import VariantA from "./VariantA";
 import VariantB from "./VariantB";

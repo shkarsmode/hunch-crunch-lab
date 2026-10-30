@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Crunchy from "@/components/Crunchy";
-import TierBadge from "@/components/TierBadge";
+import Emblem from "@/components/ui/Emblem";
+import { Icon } from "@/components/ui/icons";
+import { SectionLabel, btn } from "@/components/ui/kit";
 import { useAccess } from "@/components/access/AccessProvider";
 import { CHANNEL_URL, PATREON_URL, PRICE } from "@/lib/site";
 import { FOUNDER_SLOTS, TIERS, nextTier, tierFor } from "@/lib/tiers";
@@ -10,7 +12,7 @@ import { FOUNDER_SLOTS, TIERS, nextTier, tierFor } from "@/lib/tiers";
 type Wall = { supporters: { name: string; months: number; founderNo: number | null }[]; foundersTaken: number; founderSlots: number };
 
 const NOTES: Record<string, { text: string; good?: boolean }> = {
-  ok: { text: "Connected. Everything is unlocked. Thank you! 💛", good: true },
+  ok: { text: "Connected. Everything is unlocked. Thank you!", good: true },
   inactive: { text: `We couldn't find an active ${PRICE} membership on that Patreon account.` },
   taken: { text: "That Patreon account is already linked to another player." },
   signin: { text: "Sign in first, then connect Patreon." },
@@ -28,6 +30,18 @@ const FAQ = [
 ];
 
 const noop = () => () => {};
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+function Step({ n, done, children }: { n: number; done?: boolean; children: React.ReactNode }) {
+  return (
+    <span className="flex items-center gap-3">
+      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg font-mono text-[12px] ${done ? "bg-mint/15 text-mint" : "bg-black/15"}`}>
+        {done ? <Icon.Check size={15} /> : String(n).padStart(2, "0")}
+      </span>
+      {children}
+    </span>
+  );
+}
 
 export default function SupportClient() {
   const { configured, patreon, user, supporter, signIn, refresh, unlocked, isAdmin } = useAccess();
@@ -36,6 +50,7 @@ export default function SupportClient() {
   const [wall, setWall] = useState<Wall | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [peek, setPeek] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/wall")
@@ -49,6 +64,9 @@ export default function SupportClient() {
   const tier = tierFor(months);
   const next = nextTier(months);
   const taken = wall?.foundersTaken ?? 0;
+  const slots = wall?.founderSlots ?? FOUNDER_SLOTS;
+  const current = active && tier ? TIERS.findIndex((t) => t.id === tier.id) : -1;
+  const shown = peek ?? Math.max(0, current);
 
   const save = async (patch: { showOnWall?: boolean; wallName?: string }) => {
     setSaving(true);
@@ -58,39 +76,67 @@ export default function SupportClient() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pt-8 sm:pt-14">
+    <div className="mx-auto max-w-6xl pt-6 lg:px-6 lg:pt-14">
       {note && (
-        <p className={`mb-6 rounded-2xl px-4 py-3 text-sm font-bold animate-pop ${note.good ? "bg-mint/15 text-mint ring-1 ring-mint/40" : "bg-coral/10 text-coral ring-1 ring-coral/40"}`}>{note.text}</p>
+        <p
+          className={`enter mx-4 mb-6 flex items-center gap-2.5 rounded-xl border px-4 py-3 text-[14px] lg:mx-0 ${note.good ? "border-mint/30 bg-mint/[0.07] text-mint" : "border-coral/30 bg-coral/[0.07] text-coral"}`}
+        >
+          {note.good ? <Icon.Check size={16} /> : <span className="font-mono text-[12px]">!</span>} {note.text}
+        </p>
       )}
 
-      <section className="grid items-center gap-8 lg:grid-cols-[1.1fr_1fr]">
-        <div className="animate-rise">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold">Full lab</p>
-          <h1 className="display mt-2 text-5xl font-black leading-[0.95] sm:text-6xl">
-            <span className="text-shine">{PRICE}</span> a month.
+      <section className="lg:grid lg:grid-cols-[1.05fr_1fr] lg:items-start lg:gap-12">
+        <div className="enter px-4 lg:px-0 lg:pt-6">
+          <SectionLabel title={`Full lab · ${PRICE} / month`} className="text-gold/80" />
+          <h1 className="headline mt-3 text-[44px] leading-[0.98] sm:text-[56px] lg:text-[68px]">
+            <span className="text-gold">{PRICE}</span> a month.
             <br />
             Everything unlocked.
           </h1>
-          <p className="mt-4 max-w-md text-lg text-mist">Every setting, every experiment, every new game after the videos. Your support keeps Hunch Crunch going. Thank you, really.</p>
+          <p className="mt-4 max-w-[38ch] text-[15px] leading-relaxed text-ink/55 lg:text-[17px]">
+            Every setting, every experiment, every new game after the videos. Your support keeps Hunch Crunch going. Thank you, really.
+          </p>
         </div>
 
-        <div className="glass rounded-[2rem] p-6 animate-rise [animation-delay:100ms]">
+        <div className="enter mx-4 mt-7 overflow-hidden rounded-2xl border border-hair bg-navy-850 lg:mx-0 lg:mt-0" style={{ animationDelay: "80ms" }}>
           {active ? (
-            <div className="text-center">
-              {tier && <TierBadge tier={tier} size={112} founder={Boolean(supporter?.founderNo)} className="mx-auto" />}
-              <p className="display mt-3 text-2xl font-black">You&apos;re in. Thank you! 💛</p>
-              <p className="mt-1 text-sm text-mist">
-                {tier ? tier.name : "Supporter"} · {months} {months === 1 ? "month" : "months"}
-                {supporter?.founderNo ? ` · Founder #${supporter.founderNo}` : ""}
-              </p>
-              {next && <p className="mt-2 text-xs text-mist">{next.months - months} more {next.months - months === 1 ? "month" : "months"} to {next.name}</p>}
-              <div className="mt-5 space-y-2 text-left">
-                <label className="flex items-center justify-between rounded-xl bg-navy-950/50 px-3 py-2.5 text-sm ring-1 ring-edge/25">
+            <div className="p-5">
+              <div className="flex items-center gap-4">
+                {tier && <Emblem tier={tier.id} size={88} founder={Boolean(supporter?.founderNo)} />}
+                <div className="min-w-0">
+                  <p className="text-[20px] font-bold tracking-[-0.02em]">You&apos;re in. Thank you!</p>
+                  <p className="mt-1 font-mono text-[11px] tracking-[0.08em] text-ink/50">
+                    {(tier?.name ?? "Supporter").toUpperCase()} · {plural(months, "MONTH").toUpperCase()}
+                    {supporter?.founderNo ? ` · FOUNDER #${supporter.founderNo}` : ""}
+                  </p>
+                </div>
+              </div>
+              {next && (
+                <div className="mt-5">
+                  <div className="flex justify-between font-mono text-[10px] tracking-[0.08em] text-ink/40">
+                    <span>NEXT: {next.name.toUpperCase()}</span>
+                    <span>{plural(next.months - months, "MONTH").toUpperCase()} TO GO</span>
+                  </div>
+                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/[0.07]">
+                    <div className="h-full rounded-full bg-gold" style={{ width: `${Math.min(100, (months / next.months) * 100)}%` }} />
+                  </div>
+                </div>
+              )}
+              <div className="mt-5 divide-y divide-hair rounded-xl border border-hair">
+                <label className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-[14px]">
                   <span>Show me on the supporter wall</span>
-                  <input type="checkbox" checked={supporter?.onWall ?? true} disabled={saving} onChange={(e) => save({ showOnWall: e.target.checked })} className="h-5 w-5 accent-gold" />
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    checked={supporter?.onWall ?? true}
+                    disabled={saving}
+                    onChange={(e) => save({ showOnWall: e.target.checked })}
+                    className="peer sr-only"
+                  />
+                  <span className="relative h-6 w-10 shrink-0 rounded-full bg-white/10 transition peer-checked:bg-gold after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-4" />
                 </label>
                 <form
-                  className="flex gap-2"
+                  className="flex gap-2 p-2"
                   onSubmit={(e) => {
                     e.preventDefault();
                     save({ wallName: name ?? "" });
@@ -100,116 +146,169 @@ export default function SupportClient() {
                     value={name ?? supporter?.wallName ?? ""}
                     onChange={(e) => setName(e.target.value.slice(0, 40))}
                     placeholder="Name on the wall"
-                    className="min-w-0 flex-1 rounded-xl bg-navy-950/50 px-3 py-2.5 text-sm outline-none ring-1 ring-edge/25 focus:ring-gold/60"
+                    className="min-w-0 flex-1 rounded-lg bg-transparent px-2 text-[14px] outline-none placeholder:text-ink/30"
                     aria-label="Name on the wall"
                   />
-                  <button type="submit" disabled={saving} className="rounded-xl bg-ink px-4 text-sm font-black text-navy-950">Save</button>
+                  <button type="submit" disabled={saving} className={btn("ghost", "sm")}>
+                    Save
+                  </button>
                 </form>
               </div>
             </div>
           ) : (
-            <>
+            <div className="p-5">
               <div className="flex items-center gap-3">
-                <Crunchy size={56} mood="grin" className="shrink-0" />
-                <p className="display text-xl font-black">Three taps and you&apos;re in</p>
+                <Crunchy size={44} mood="grin" shadow={false} className="shrink-0" />
+                <div>
+                  <p className="text-[18px] font-bold tracking-[-0.02em]">Three steps and you&apos;re in</p>
+                  <p className="font-mono text-[10px] tracking-[0.08em] text-ink/40">ABOUT A MINUTE · CANCEL ANY TIME</p>
+                </div>
               </div>
               {!configured || !patreon ? (
-                <div className="mt-5 space-y-3">
-                  <p className="rounded-2xl bg-navy-950/60 px-4 py-3 text-center text-sm font-bold text-gold ring-1 ring-gold/30">Supporter access opens very soon</p>
-                  <a href={CHANNEL_URL} target="_blank" rel="noreferrer" className="block rounded-2xl bg-coral px-4 py-3 text-center font-black text-navy-950">
-                    Subscribe on YouTube to catch it
+                <div className="mt-5 space-y-2.5">
+                  <p className="rounded-xl border border-gold/25 bg-gold/[0.06] px-4 py-3 text-center text-[14px] text-gold">Supporter access opens very soon</p>
+                  <a href={CHANNEL_URL} target="_blank" rel="noreferrer" className={btn("ghost", "lg", "w-full")}>
+                    <Icon.Youtube size={18} /> Subscribe to catch it
                   </a>
                 </div>
               ) : (
-                <ol className="mt-5 space-y-2.5">
+                <ol className="mt-5 space-y-2">
                   <li>
-                    <button type="button" onClick={signIn} disabled={Boolean(user)} className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left font-bold transition ${user ? "bg-mint/10 text-mint ring-1 ring-mint/30" : "bg-ink text-navy-950 active:scale-[.98]"}`}>
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-navy-950/15 text-sm">{user ? "✓" : "1"}</span>
-                      {user ? `Signed in as ${user.name}` : "Sign in with Google (free)"}
+                    <button
+                      type="button"
+                      onClick={signIn}
+                      disabled={Boolean(user)}
+                      className={`flex h-14 w-full items-center rounded-xl px-3 text-left text-[15px] font-semibold transition active:scale-[0.99] ${user ? "border border-mint/25 bg-mint/[0.06] text-mint" : "bg-ink text-[#0B0D12]"}`}
+                    >
+                      <Step n={1} done={Boolean(user)}>
+                        {user ? `Signed in as ${user.name}` : "Sign in with Google (free)"}
+                      </Step>
                     </button>
                   </li>
                   <li>
-                    <a href={PATREON_URL || CHANNEL_URL} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl bg-gold px-4 py-3 font-black text-navy-950 active:scale-[.98]">
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-navy-950/15 text-sm">2</span>
-                      Join on Patreon · {PRICE}/mo
+                    <a href={PATREON_URL || CHANNEL_URL} target="_blank" rel="noreferrer" className={`${btn("primary", "lg", "h-14 w-full justify-start px-3")}`}>
+                      <Step n={2}>Join on Patreon · {PRICE}/mo</Step>
+                      <Icon.Out size={17} className="ml-auto" />
                     </a>
                   </li>
                   <li>
-                    <a href={user ? "/api/patreon/login" : "#"} onClick={(e) => !user && (e.preventDefault(), signIn())} className="flex items-center gap-3 rounded-2xl px-4 py-3 font-bold ring-1 ring-edge/40 active:scale-[.98]">
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ink/10 text-sm">3</span>
-                      Connect Patreon to unlock
+                    <a
+                      href={user ? "/api/patreon/login" : "#"}
+                      onClick={(e) => !user && (e.preventDefault(), signIn())}
+                      className={`${btn("ghost", "lg", "h-14 w-full justify-start px-3")}`}
+                    >
+                      <Step n={3}>Connect Patreon to unlock</Step>
+                      <Icon.Arrow size={17} className="ml-auto" />
                     </a>
                   </li>
                 </ol>
               )}
-              {unlocked && isAdmin && <p className="mt-3 text-center text-xs text-mist">You&apos;re an admin, so everything is already unlocked for you.</p>}
-            </>
+              {unlocked && isAdmin && <p className="mt-3 font-mono text-[10px] tracking-[0.08em] text-ink/40">YOU&apos;RE AN ADMIN, SO EVERYTHING IS ALREADY UNLOCKED FOR YOU.</p>}
+            </div>
           )}
         </div>
       </section>
 
-      <section className="pt-20">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan">Tiers</p>
-        <h2 className="display mt-1 text-3xl font-black sm:text-4xl">Your badge levels up</h2>
-        <p className="mt-2 max-w-xl text-mist">Same {PRICE}, same full lab. The longer you stay, the fancier your badge on the wall.</p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section className="pt-14 lg:pt-20">
+        <SectionLabel n="01" title="Tiers" right="SAME PRICE, NEW BADGE" className="px-4 pb-3 lg:px-0" />
+        <div className="px-4 lg:px-0">
+          <h2 className="headline text-[30px] leading-[1.05] lg:text-[40px]">Your badge levels up</h2>
+          <p className="mt-2 max-w-[44ch] text-[14px] text-ink/50">Same {PRICE}, same full lab. The longer you stay, the fancier your badge on the wall.</p>
+        </div>
+        <div className="no-scrollbar mt-5 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 pb-1 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
           {TIERS.map((t, i) => (
-            <div key={t.id} className={`glass flex flex-col items-center rounded-3xl p-5 text-center animate-rise ${tier?.id === t.id && active ? "ring-2 ring-gold" : ""}`} style={{ animationDelay: `${i * 80}ms` }}>
-              <TierBadge tier={t} size={84} />
-              <p className="display mt-3 text-lg font-black" style={{ color: t.color }}>{t.name}</p>
-              <p className="num text-xs font-bold text-mist">{t.months} {t.months === 1 ? "month" : "months"}</p>
-              <p className="mt-2 text-sm text-mist">{t.line}</p>
-            </div>
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setPeek(i)}
+              className={`w-[188px] shrink-0 snap-start rounded-2xl border p-4 text-left transition lg:w-auto ${i === shown ? "border-gold/45 bg-gold/[0.04]" : "border-hair bg-white/[0.012] hover:border-hair-strong"}`}
+            >
+              <Emblem tier={t.id} size={92} className="-ml-1" muted={active && i > current} />
+              <div className="mt-3 font-mono text-[10px] tracking-[0.1em] text-ink/40">
+                {String(t.months).padStart(2, "0")} {t.months === 1 ? "MONTH" : "MONTHS"}
+                {i === current ? " · YOU" : ""}
+              </div>
+              <div className="mt-1 text-[15px] font-semibold tracking-[-0.01em]">{t.name}</div>
+              <div className="mt-1 text-[12px] leading-snug text-ink/45">{t.line}</div>
+            </button>
           ))}
         </div>
-        <div className="glass mt-3 flex flex-wrap items-center gap-4 rounded-3xl p-5">
-          <TierBadge tier={TIERS[0]} size={56} founder />
-          <div className="min-w-0 flex-1">
-            <p className="display font-black text-gold">Founder ring</p>
-            <p className="text-sm text-mist">The first {FOUNDER_SLOTS} supporters keep a gold ring around their badge forever.</p>
+        <div className="mt-5 px-4 lg:px-0">
+          <div className="relative h-px bg-white/10">
+            <div className="absolute inset-y-0 left-0 bg-gold transition-all duration-500" style={{ width: `${(shown / (TIERS.length - 1)) * 100}%` }} />
+            {TIERS.map((t, i) => (
+              <span
+                key={t.id}
+                className={`absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full transition ${i <= shown ? "bg-gold" : "bg-navy-700"}`}
+                style={{ left: `${(i / (TIERS.length - 1)) * 100}%` }}
+              />
+            ))}
           </div>
-          <p className="num text-right text-sm">
-            <span className="display text-2xl font-black text-ink">{taken}</span>
-            <span className="text-mist"> / {wall?.founderSlots ?? FOUNDER_SLOTS} taken</span>
+          <div className="mt-2.5 flex justify-between font-mono text-[10px] text-ink/35">
+            {TIERS.map((t) => (
+              <span key={t.id}>{t.months}M</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="mx-4 mt-6 flex items-center gap-4 rounded-2xl border border-hair bg-navy-850 p-4 lg:mx-0">
+          <Emblem tier="coin" size={64} founder />
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-semibold text-gold">Founder ring</p>
+            <p className="mt-0.5 text-[13px] leading-snug text-ink/50">The first {FOUNDER_SLOTS} supporters keep a gold ring around their badge forever.</p>
+            <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">
+              <div className="h-full rounded-full bg-gold" style={{ width: `${(taken / slots) * 100}%` }} />
+            </div>
+          </div>
+          <p className="shrink-0 text-right font-mono">
+            <span className="text-[22px] text-ink">{taken}</span>
+            <span className="text-[11px] text-ink/40"> / {slots}</span>
           </p>
         </div>
       </section>
 
-      <section className="pt-20">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-mint">Supporter wall</p>
-        <h2 className="display mt-1 text-3xl font-black sm:text-4xl">The people keeping the lab open</h2>
+      <section className="pt-14 lg:pt-20">
+        <SectionLabel n="02" title="Supporter wall" right={wall ? `${wall.supporters.length} NAMES` : ""} className="px-4 pb-3 lg:px-0" />
         {wall && wall.supporters.length > 0 ? (
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 divide-y divide-hair border-y border-hair sm:grid-cols-2 sm:gap-x-6 sm:divide-y-0 sm:border-0 lg:grid-cols-3">
             {wall.supporters.map((s, i) => {
               const t = tierFor(s.months) ?? TIERS[0];
               return (
-                <div key={i} className="glass flex items-center gap-3 rounded-2xl p-3 animate-rise" style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}>
-                  <TierBadge tier={t} size={44} founder={Boolean(s.founderNo)} />
+                <div key={i} className="enter flex items-center gap-3 px-4 py-3 sm:border-b sm:border-hair sm:px-0" style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}>
+                  <Emblem tier={t.id} size={44} founder={Boolean(s.founderNo)} />
                   <div className="min-w-0">
-                    <p className="truncate font-bold">{s.name}</p>
-                    <p className="num text-xs text-mist">{t.name}{s.founderNo ? ` · #${s.founderNo}` : ""}</p>
+                    <p className="truncate text-[15px] font-medium">{s.name}</p>
+                    <p className="font-mono text-[10px] tracking-[0.08em] text-ink/40">
+                      {t.name.toUpperCase()}
+                      {s.founderNo ? ` · FOUNDER #${s.founderNo}` : ""}
+                    </p>
                   </div>
                 </div>
               );
             })}
           </div>
         ) : (
-          <div className="glass mt-6 flex flex-col items-center rounded-3xl px-6 py-10 text-center">
-            <Crunchy size={72} mood="squint" />
-            <p className="display mt-3 text-xl font-black">No names here yet.</p>
-            <p className="mt-1 text-mist">Founder #1 could be you.</p>
+          <div className="mx-4 flex items-center gap-4 rounded-2xl border border-dashed border-hair-strong px-5 py-6 lg:mx-0">
+            <Crunchy size={52} mood="squint" shadow={false} />
+            <div>
+              <p className="text-[16px] font-semibold">No names here yet.</p>
+              <p className="text-[14px] text-ink/50">Founder #1 could be you.</p>
+            </div>
           </div>
         )}
       </section>
 
-      <section className="pt-20">
-        <h2 className="display text-3xl font-black">Questions</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <section className="pt-14 lg:pt-20">
+        <SectionLabel n="03" title="Questions" className="px-4 pb-3 lg:px-0" />
+        <div className="divide-y divide-hair border-y border-hair lg:grid lg:grid-cols-2 lg:gap-x-10 lg:divide-y-0 lg:border-0">
           {FAQ.map((f) => (
-            <div key={f.q} className="glass rounded-2xl p-5">
-              <p className="font-bold">{f.q}</p>
-              <p className="mt-1 text-sm text-mist">{f.a}</p>
-            </div>
+            <details key={f.q} className="group px-4 lg:border-b lg:border-hair lg:px-0">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-[15px] font-medium [&::-webkit-details-marker]:hidden">
+                {f.q}
+                <Icon.Plus size={16} className="shrink-0 text-ink/40 transition duration-200 group-open:rotate-45" />
+              </summary>
+              <p className="-mt-1 pb-4 text-[14px] leading-relaxed text-ink/55">{f.a}</p>
+            </details>
           ))}
         </div>
       </section>

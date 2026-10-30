@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import AntsPreview from "@/components/labs/ants/AntsPreview";
-import Emblem from "@/components/design/Emblem";
+import Emblem from "@/components/ui/Emblem";
 import { AntsThumb, CoinThumb, Icon, LAB, PRESETS, PackThumb, SPEEDS, UNLOCKS, fmt, useAntsControls, useAntsStep } from "@/components/design/parts";
 import { TIERS } from "@/lib/tiers";
 

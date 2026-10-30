@@ -1,132 +1,204 @@
 import Link from "next/link";
-import Crunchy from "@/components/Crunchy";
-import ExperimentCard from "@/components/ExperimentCard";
-import TierBadge from "@/components/TierBadge";
-import AntsPreview from "@/components/labs/ants/AntsPreview";
-import { EXPERIMENTS } from "@/lib/experiments";
+import LiveAnts from "@/components/home/LiveAnts";
+import Emblem from "@/components/ui/Emblem";
+import { Icon } from "@/components/ui/icons";
+import { AntsThumb, CoinThumb, PackThumb } from "@/components/ui/thumbs";
+import { ButtonLink, LiveDot, SectionLabel, Tag, btn } from "@/components/ui/kit";
+import { EXPERIMENTS, type Experiment } from "@/lib/experiments";
 import { TIERS } from "@/lib/tiers";
-import { CHANNEL_URL, PRICE } from "@/lib/site";
+import { CHANNEL_URL, PRICE, shortUrl } from "@/lib/site";
 import { SEED_IDEAS, STATUS } from "@/data/ideas";
 
+const FACTS: Record<string, { n: string; line: string }> = {
+  "two-ants": { n: "84,876", line: "steps until the grid is clean" },
+  coin: { n: "10,000", line: "real coins to fool" },
+  stickers: { n: "$2,000", line: "to finish the album, not $280" },
+};
+
 const STEPS = [
-  { n: "1", title: "Lock in your hunch", text: "Every experiment starts with a guess. No take-backs." },
-  { n: "2", title: "Run the real thing", text: "The same code that made the video, running in your browser." },
-  { n: "3", title: "Crunch the truth", text: "Exact numbers, no hand-waving. Was your gut right?" },
+  { title: "Lock in your hunch", text: "Every experiment starts with a guess. No take-backs." },
+  { title: "Run the real thing", text: "The same code that made the video, running in your browser." },
+  { title: "Crunch the truth", text: "Exact numbers, no hand-waving. Was your gut right?" },
 ];
 
-export default function Home() {
+const UNLOCKS = ["Up to 6 ants, any rules, up to 1M steps a second", "Every new game after the videos", "Send ideas for the next videos", "A badge on the wall that levels up"];
+
+function Thumb({ slug, big = false }: { slug: string; big?: boolean }) {
+  if (slug === "two-ants") return <AntsThumb className={big ? "h-24 w-24" : "h-11 w-11"} cell={big ? 3.4 : 1.7} />;
+  if (slug === "coin") return <CoinThumb size={big ? 70 : 34} />;
+  return <PackThumb size={big ? 96 : 46} />;
+}
+
+function LabItem({ e, i }: { e: Experiment; i: number }) {
   return (
-    <div className="mx-auto max-w-6xl px-4">
-      <section className="grid items-center gap-8 pb-10 pt-8 sm:pt-14 lg:grid-cols-[1.05fr_1fr] lg:gap-12">
-        <div className="animate-rise">
-          <p className="inline-flex items-center gap-2 rounded-full bg-gold/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-gold ring-1 ring-gold/30">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold" /> The lab is open
-          </p>
-          <h1 className="display mt-4 text-[44px] font-black leading-[0.95] sm:text-6xl lg:text-7xl">
+    <Link
+      href={`/lab/${e.slug}`}
+      className="enter group flex items-center gap-4 px-4 py-4 transition hover:bg-white/[0.025] active:bg-white/[0.05] lg:flex-col lg:items-stretch lg:gap-0 lg:p-6"
+      style={{ animationDelay: `${120 + i * 60}ms` }}
+    >
+      <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-hair bg-navy-800 lg:hidden">
+        <Thumb slug={e.slug} />
+      </div>
+      <div className="hidden h-36 place-items-center rounded-xl border border-hair bg-navy-950/60 lg:grid">
+        <Thumb slug={e.slug} big />
+      </div>
+      <div className="min-w-0 flex-1 lg:mt-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="truncate text-[16px] font-semibold tracking-[-0.01em] lg:text-[18px]">{e.title}</h3>
+          <span className="hidden font-mono text-[12px] tabular-nums text-ink/40 lg:block">{FACTS[e.slug]?.n}</span>
+        </div>
+        <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-ink/45 lg:mt-1.5 lg:text-[14px]">{e.hook}</p>
+        <div className="mt-2 flex gap-3 lg:mt-4">
+          <Tag tone="free">Free setup</Tag>
+          {e.full && <Tag>+{e.full.length} in full lab</Tag>}
+        </div>
+      </div>
+      <Icon.Chevron size={18} className="shrink-0 text-ink/25 transition group-hover:translate-x-0.5 group-hover:text-ink/60 lg:hidden" />
+    </Link>
+  );
+}
+
+export default function Home() {
+  const live = EXPERIMENTS.filter((e) => e.status === "live");
+  const soon = EXPERIMENTS.filter((e) => e.status === "soon");
+
+  return (
+    <div className="mx-auto max-w-6xl">
+      <section className="pt-5 lg:grid lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-14 lg:px-6 lg:pt-16">
+        <div className="lg:order-2">
+          <div className="enter flex items-center gap-2 px-4 font-mono text-[11px] tracking-[0.08em] text-ink/50 lg:px-0">
+            <LiveDot /> LIVE · E030 · TWO ANTS
+          </div>
+          <LiveAnts className="enter mt-3 h-[300px] border-y border-hair sm:h-[380px] lg:h-[480px] lg:rounded-2xl lg:border" />
+        </div>
+        <div className="px-4 lg:order-1 lg:px-0">
+          <h1 className="headline enter mt-6 text-[42px] leading-[1.0] sm:text-[56px] lg:mt-0 lg:text-[72px]" style={{ animationDelay: "80ms" }}>
             Got a hunch?
             <br />
-            <span className="text-shine">Play it.</span>
+            <span className="text-gold">Play it.</span>
           </h1>
-          <p className="mt-5 max-w-md text-lg text-mist">
-            The simulations from the Hunch Crunch videos, now in your hands. Guess first, then run the real thing and see who was right: you or the math.
+          <p className="enter mt-4 max-w-[36ch] text-[15px] leading-relaxed text-ink/55 lg:text-[17px]" style={{ animationDelay: "140ms" }}>
+            The simulations from the Shorts, in your hands. Guess first, then run the real thing and see who was right.
           </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/lab/two-ants" className="rounded-2xl bg-gold px-6 py-3.5 text-base font-black text-navy-950 shadow-[0_10px_40px_-10px_#ffc94a] transition hover:-translate-y-0.5 active:scale-95">
-              Play two ants 🐜
-            </Link>
-            <a href={CHANNEL_URL} target="_blank" rel="noreferrer" className="rounded-2xl px-6 py-3.5 text-base font-bold ring-1 ring-edge/40 transition hover:bg-ink/5 active:scale-95">
-              Watch the videos
+          <div className="enter mt-7 flex gap-2.5" style={{ animationDelay: "200ms" }}>
+            <ButtonLink href="/lab/two-ants" size="lg" className="flex-1 sm:flex-none sm:px-7">
+              Play two ants <Icon.Arrow size={18} className="transition group-hover:translate-x-0.5" />
+            </ButtonLink>
+            <a href={CHANNEL_URL} target="_blank" rel="noreferrer" className={btn("ghost", "lg")}>
+              <Icon.Youtube size={18} /> Videos
             </a>
           </div>
         </div>
-        <div className="relative animate-rise [animation-delay:120ms]">
-          <div className="glass relative aspect-square overflow-hidden rounded-[2rem] shadow-2xl sm:aspect-[4/3.4]">
-            <AntsPreview className="absolute inset-0" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy-950/90 to-transparent p-4 pt-12">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold">Live · not a video</p>
-              <p className="display text-lg font-black">Two ants, same 2 rules. Watch them come home.</p>
-            </div>
-          </div>
-          <Crunchy size={84} mood="squint" className="absolute -right-2 -top-9 drop-shadow-2xl animate-float sm:-right-6 sm:-top-10" />
-        </div>
       </section>
 
-      <section id="lab" className="scroll-mt-20 pt-10">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan">The lab</p>
-            <h2 className="display mt-1 text-3xl font-black sm:text-4xl">Pick an experiment</h2>
+      <section className="mt-9 grid grid-cols-3 divide-x divide-hair border-y border-hair lg:mx-6 lg:mt-16 lg:rounded-2xl lg:border">
+        {live.map((e) => (
+          <div key={e.slug} className="px-4 py-4 lg:px-6 lg:py-5">
+            <div className="font-mono text-[17px] tabular-nums lg:text-[24px]">{FACTS[e.slug]?.n}</div>
+            <div className="mt-0.5 text-[11px] leading-snug text-ink/40 lg:text-[13px]">{FACTS[e.slug]?.line}</div>
           </div>
-          <p className="hidden max-w-xs text-right text-sm text-mist sm:block">New ones after the videos. The one from the video is always free to try.</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {EXPERIMENTS.map((e, i) => (
-            <ExperimentCard key={e.slug} e={e} i={i} />
+        ))}
+      </section>
+
+      <section id="lab" className="scroll-mt-16 pt-12 lg:pt-20">
+        <SectionLabel n="01" title="The lab" right={`${live.length} LIVE · ${soon.length} SOON`} className="px-4 pb-3 lg:px-6" />
+        <div className="divide-y divide-hair border-y border-hair lg:mx-6 lg:grid lg:grid-cols-3 lg:divide-x lg:divide-y-0 lg:overflow-hidden lg:rounded-2xl lg:border">
+          {live.map((e, i) => (
+            <LabItem key={e.slug} e={e} i={i} />
           ))}
         </div>
-      </section>
-
-      <section className="pt-20">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {STEPS.map((s) => (
-            <div key={s.n} className="glass rounded-3xl p-5">
-              <span className="display grid h-10 w-10 place-items-center rounded-xl bg-ink text-lg font-black text-navy-950">{s.n}</span>
-              <h3 className="display mt-4 text-lg font-black">{s.title}</h3>
-              <p className="mt-1 text-sm text-mist">{s.text}</p>
-            </div>
-          ))}
+        <div className="mt-6 px-4 lg:px-6">
+          <SectionLabel title="Next in the lab" right="FROM THE SHORTS" className="pb-2" />
+          <div className="grid divide-y divide-hair border-y border-hair sm:grid-cols-2 sm:divide-y-0 sm:border-0 sm:gap-x-6">
+            {soon.map((e, i) => (
+              <div key={e.slug} className="flex items-center gap-3 py-3 sm:border-b sm:border-hair">
+                <span className="w-5 font-mono text-[11px] text-ink/25">{String(i + live.length + 1).padStart(2, "0")}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[14px] font-medium text-ink/70">{e.title}</div>
+                  <div className="truncate text-[12px] text-ink/35">{e.hook}</div>
+                </div>
+                {e.video ? (
+                  <a href={shortUrl(e.video)} target="_blank" rel="noreferrer" className="shrink-0 font-mono text-[10px] tracking-[0.08em] text-ink/45 transition hover:text-ink">
+                    WATCH ↗
+                  </a>
+                ) : (
+                  <Tag>Soon</Tag>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="pt-20">
-        <div className="glass relative overflow-hidden rounded-[2rem] p-6 sm:p-10">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-gold/20 blur-3xl" />
-          <div className="relative grid items-center gap-8 lg:grid-cols-2">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold">Full lab</p>
-              <h2 className="display mt-1 text-3xl font-black sm:text-4xl">
-                <span className="text-shine">{PRICE}</span> a month. Everything unlocked.
-              </h2>
-              <p className="mt-3 max-w-md text-mist">Every setting, every experiment, every new game. Send ideas for the next videos. Your badge levels up the longer you stay. And it keeps the channel going. Thank you, really.</p>
-              <Link href="/support" className="mt-6 inline-block rounded-2xl bg-gold px-6 py-3.5 font-black text-navy-950 transition hover:-translate-y-0.5 active:scale-95">
-                See the tiers
-              </Link>
-            </div>
-            <div className="no-scrollbar -mx-2 flex gap-3 overflow-x-auto px-2 pb-2">
+      <section className="px-4 pt-14 lg:px-6 lg:pt-20">
+        <SectionLabel n="02" title="How it works" className="pb-3" />
+        <ol className="divide-y divide-hair border-y border-hair lg:grid lg:grid-cols-3 lg:divide-x lg:divide-y-0 lg:rounded-2xl lg:border">
+          {STEPS.map((s, i) => (
+            <li key={s.title} className="flex gap-4 py-4 lg:block lg:p-6">
+              <span className="font-mono text-[12px] text-gold">{String(i + 1).padStart(2, "0")}</span>
+              <div className="lg:mt-3">
+                <h3 className="text-[16px] font-semibold tracking-[-0.01em]">{s.title}</h3>
+                <p className="mt-0.5 text-[14px] leading-snug text-ink/45">{s.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="px-4 pt-14 lg:px-6 lg:pt-20">
+        <SectionLabel n="03" title="Full lab" right={`${PRICE} / MONTH`} className="pb-3" />
+        <div className="overflow-hidden rounded-2xl border border-hair bg-gradient-to-b from-white/[0.035] to-transparent lg:grid lg:grid-cols-[1fr_1.1fr]">
+          <div className="p-5 lg:p-8">
+            <h2 className="headline text-[28px] leading-[1.05] lg:text-[38px]">Every rule, every speed, every game.</h2>
+            <ul className="mt-5 space-y-2.5">
+              {UNLOCKS.map((u) => (
+                <li key={u} className="flex items-center gap-2.5 text-[14px] text-ink/70">
+                  <Icon.Check size={16} className="shrink-0 text-mint" /> {u}
+                </li>
+              ))}
+            </ul>
+            <ButtonLink href="/support" size="lg" className="mt-6 w-full sm:w-auto sm:px-7">
+              See the tiers <Icon.Arrow size={18} className="transition group-hover:translate-x-0.5" />
+            </ButtonLink>
+          </div>
+          <div className="border-t border-hair p-5 lg:border-l lg:border-t-0 lg:p-8">
+            <div className="no-scrollbar -mx-5 flex gap-1 overflow-x-auto px-5 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
               {TIERS.map((t, i) => (
-                <div key={t.id} className="flex w-28 shrink-0 flex-col items-center rounded-2xl bg-navy-950/50 p-3 text-center ring-1 ring-edge/20 animate-rise" style={{ animationDelay: `${i * 90}ms` }}>
-                  <TierBadge tier={t} size={64} />
-                  <p className="mt-2 text-xs font-black leading-tight">{t.name}</p>
-                  <p className="num text-[11px] text-mist">{t.months} mo</p>
+                <div key={t.id} className="w-[86px] shrink-0 text-center lg:w-auto">
+                  <Emblem tier={t.id} size={72} className="mx-auto" />
+                  <div className="mt-1.5 text-[12px] font-semibold leading-tight">{t.name}</div>
+                  <div className="font-mono text-[10px] text-ink/40">{t.months} MO</div>
+                  <span className="sr-only">{i + 1} of {TIERS.length}</span>
                 </div>
               ))}
             </div>
+            <p className="mt-4 text-[13px] text-ink/45">Same price, same full lab. Your badge levels up the longer you stay.</p>
           </div>
         </div>
       </section>
 
-      <section className="pt-20">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-mint">You ask, we crunch</p>
-            <h2 className="display mt-1 text-3xl font-black sm:text-4xl">Ideas from viewers</h2>
-          </div>
-          <Link href="/ideas" className="shrink-0 text-sm font-bold text-mint hover:underline">
-            All ideas →
-          </Link>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+      <section className="px-4 pt-14 lg:px-6 lg:pt-20">
+        <SectionLabel
+          n="04"
+          title="You ask, we crunch"
+          right={
+            <Link href="/ideas" className="transition hover:text-ink">
+              ALL IDEAS →
+            </Link>
+          }
+          className="pb-3"
+        />
+        <div className="divide-y divide-hair border-y border-hair sm:grid sm:grid-cols-2 sm:gap-x-6 sm:divide-y-0 sm:border-0">
           {SEED_IDEAS.map((idea) => {
             const s = STATUS[idea.status];
             return (
-              <div key={idea.id} className="glass flex items-start gap-3 rounded-2xl p-4">
-                <span className="text-2xl">{s.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold">{idea.title}</p>
-                  <p className="mt-0.5 truncate text-sm text-mist">
-                    {idea.by} · <span style={{ color: s.color }}>{s.label}</span>
-                  </p>
+              <div key={idea.id} className="py-3.5 sm:border-b sm:border-hair">
+                <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.08em]">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
+                  <span style={{ color: s.color }}>{s.label.toUpperCase()}</span>
+                  <span className="truncate text-ink/30">{idea.by}</span>
                 </div>
+                <p className="mt-1 text-[15px] font-medium leading-snug">{idea.title}</p>
               </div>
             );
           })}

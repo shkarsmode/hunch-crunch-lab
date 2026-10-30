@@ -1,22 +1,30 @@
 @import "tailwindcss";
 
 @theme {
-  --color-navy-950: #070b17;
-  --color-navy-900: #0b1020;
-  --color-navy-850: #0f1630;
-  --color-navy-800: #141a30;
-  --color-navy-700: #1c2442;
-  --color-line: #2e3a60;
-  --color-edge: #6f80b3;
+  /* Instrument palette: near-black surfaces, hairlines, one gold accent. */
+  --color-navy-950: #04060a;
+  --color-navy-900: #06080d;
+  --color-navy-850: #0a0d14;
+  --color-navy-800: #0f131c;
+  --color-navy-700: #161b26;
+  --color-line: #1d2330;
+  --color-edge: #8a93a6;
+  --color-hair: #ffffff12;
+  --color-hair-strong: #ffffff1f;
   --color-gold: #ffc94a;
+  --color-gold-hi: #ffd56e;
   --color-gold-dark: #c98f22;
   --color-cyan: #3fe0ff;
+  --color-ant-a: #3fd2ff;
+  --color-ant-b: #ff4fd8;
   --color-coral: #ff5c7a;
   --color-mint: #3ee6a0;
-  --color-ink: #f4f6fb;
-  --color-mist: #a9b6d3;
+  --color-ink: #f2f4f8;
+  --color-mist: #8a93a6;
+  --color-dim: #5a6275;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jb), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-pop: pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
@@ -60,25 +68,21 @@ html {
 
 body {
   color: var(--color-ink);
-  background:
-    radial-gradient(1100px 650px at 75% -10%, rgb(63 224 255 / 0.1), transparent 60%),
-    radial-gradient(900px 600px at -10% 0%, rgb(255 201 74 / 0.08), transparent 60%),
-    linear-gradient(180deg, #0f1630 0%, #0b1020 55%, #070b17 100%);
-  background-attachment: fixed;
+  background: var(--color-navy-900);
   -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
 }
 
+/* A quiet dot grid, brighter near the top, like graph paper under a lamp. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgb(111 128 179 / 0.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(111 128 179 / 0.09) 1px, transparent 1px);
-  background-size: 54px 54px;
-  mask-image: radial-gradient(ellipse at 50% 25%, black 25%, transparent 75%);
+  background-image: radial-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(180deg, black 0%, rgb(0 0 0 / 0.55) 55%, rgb(0 0 0 / 0.3) 100%);
 }
 
 body::after {
@@ -87,7 +91,26 @@ body::after {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 55%, rgb(3 5 12 / 0.65) 100%);
+  background: radial-gradient(900px 420px at 50% -120px, rgb(255 255 255 / 0.05), transparent 70%);
+}
+
+.headline {
+  font-variation-settings: "opsz" 32;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.hair {
+  border-color: var(--color-hair);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgb(255 201 74 / 0.3);
 }
 
 .lab-grid {
@@ -120,10 +143,18 @@ body::after {
 }
 
 .glass {
-  background: linear-gradient(180deg, rgb(28 36 66 / 0.9), rgb(15 22 48 / 0.92));
-  border: 1px solid rgb(111 128 179 / 0.22);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: linear-gradient(180deg, rgb(15 19 28 / 0.94), rgb(10 13 20 / 0.96));
+  border: 1px solid rgb(255 255 255 / 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.sheet-up {
+  animation: sheet-up 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -251,7 +282,7 @@ input[type="range"] {
   animation: flip-in 0.32s cubic-bezier(0.2, 1.3, 0.4, 1) both;
 }
 .mono {
-  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-jb), ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variant-numeric: tabular-nums;
 }
 .emblem-muted .emblem-shine,
