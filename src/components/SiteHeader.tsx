@@ -25,7 +25,7 @@ export default function SiteHeader() {
     return () => window.removeEventListener("pointerdown", close);
   }, [open]);
 
-  if (path.startsWith("/lab/")) return null;
+  if (path.startsWith("/lab/") || path === "/design") return null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-edge/15 bg-navy-900/70 backdrop-blur-xl">

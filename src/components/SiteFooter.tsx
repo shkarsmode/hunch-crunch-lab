@@ -7,7 +7,7 @@ import { CHANNEL_URL } from "@/lib/site";
 
 export default function SiteFooter() {
   const path = usePathname();
-  if (path.startsWith("/lab/")) return null;
+  if (path.startsWith("/lab/") || path === "/design") return null;
   return (
     <footer className="mt-24 border-t border-edge/15">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-center">
