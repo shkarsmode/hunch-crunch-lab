@@ -1,11 +1,13 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import type { ReactNode } from "react";
 import { Locked, LockIcon } from "@/components/access/AccessProvider";
+import { Icon } from "@/components/ui/icons";
+import { btn } from "@/components/ui/kit";
 import { shortUrl } from "@/lib/site";
-import { FRIEND_FACES, VIDEO_ID, fmt, fmtPacks, tap } from "./config";
+import { VIDEO_ID, fmt, fmtPacks, tap } from "./config";
 import { harmonic, type Spec } from "./math";
-import { CYAN, DEEP, DISPLAY, GOLD, INK, LABEL, MINT, MUTED, PANEL_LINE, SOFT, WHITE, CORAL, rgba } from "./video";
+import { MINT } from "./video";
 
 export const SPEEDS = [
   { label: "Chill", rate: 2, instant: false, fast: false },
@@ -14,28 +16,53 @@ export const SPEEDS = [
   { label: "Turbo", rate: 300, instant: true, fast: false },
 ];
 
-const pill = (color: string): CSSProperties => ({
-  background: rgba(color, 0.95),
-  boxShadow: `0 0 20px ${rgba(color, 0.35)}`,
-  color: INK,
-  ...DISPLAY,
-});
+const LINK = "inline-flex h-11 items-center gap-1.5 rounded-xl px-2 text-[12px] font-semibold transition hover:bg-white/[0.04] active:scale-[0.98]";
+
+type SegProps<T> = { value: T; options: { v: T; label: ReactNode }[]; onChange: (v: T) => void; label: string; className?: string };
+
+export function Seg<T extends string | number>({ value, options, onChange, label, className = "h-12" }: SegProps<T>) {
+  const at = options.findIndex((o) => o.v === value);
+  return (
+    <div role="radiogroup" aria-label={label} className={`relative grid auto-cols-fr grid-flow-col rounded-xl border border-hair bg-white/[0.03] ${className}`}>
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute inset-y-1 left-1 rounded-lg bg-white/[0.12] transition duration-200 ease-out ${at < 0 ? "opacity-0" : ""}`}
+        style={{ width: `calc(100% / ${options.length} - 8px)`, transform: `translateX(calc(${Math.max(0, at)} * (100% + 8px)))` }}
+      />
+      {options.map((o) => (
+        <button
+          key={String(o.v)}
+          type="button"
+          role="radio"
+          aria-checked={o.v === value}
+          onClick={() => onChange(o.v)}
+          className={`relative flex min-w-0 touch-manipulation flex-col items-center justify-center px-1 font-mono text-[11px] uppercase leading-none tracking-[0.06em] transition ${
+            o.v === value ? "text-ink" : "text-ink/45 hover:text-ink/80"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function Friends({ shares }: { shares: number[] }) {
   if (shares.length === 0) return null;
   return (
-    <div className="flex items-center justify-center gap-2" aria-label="Friends you swap with">
+    <div role="group" aria-label="Friends you swap with" className="flex items-center justify-center gap-2">
+      <span aria-hidden className="mr-0.5 font-mono text-[10px] tracking-[0.12em] text-ink/40">
+        FRIENDS
+      </span>
       {shares.map((v, i) => (
         <span
           key={i}
           data-friend={i}
           title={`Friend ${i + 1}: ${Math.round(v * 100)}% done`}
           className="grid h-9 w-9 place-items-center rounded-full"
-          style={{ background: `conic-gradient(${MINT} ${Math.round(v * 360)}deg, ${rgba(PANEL_LINE, 0.9)} 0deg)` }}
+          style={{ background: `conic-gradient(${MINT} ${Math.round(v * 360)}deg, rgb(255 255 255 / 0.1) 0deg)` }}
         >
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-full text-[16px] leading-none" style={{ background: "#0B1124" }}>
-            {FRIEND_FACES[i % FRIEND_FACES.length]}
-          </span>
+          <span className="grid h-[30px] w-[30px] place-items-center rounded-full bg-navy-850 font-mono text-[11px] text-ink/70">{i + 1}</span>
         </span>
       ))}
     </div>
@@ -56,71 +83,74 @@ type PlayProps = {
   onRip: (n: number) => void;
   onAuto: () => void;
   onSpeed: (i: number) => void;
+  setupOpen: boolean;
+  onSetup: () => void;
 };
 
-export function PlayControls({ disabled, auto, running, shares, remaining, started, onRip, onAuto, onSpeed }: PlayProps) {
-  const autoRow = (
-    <div className="flex items-center gap-1 rounded-full p-1" style={{ background: rgba(DEEP, 0.9), boxShadow: `0 0 0 1px ${PANEL_LINE}` }}>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onAuto}
-        className="h-11 w-[84px] shrink-0 touch-manipulation rounded-full text-sm transition active:scale-95 disabled:opacity-50"
-        style={{ ...DISPLAY, background: running ? CORAL : MINT, color: INK }}
-      >
-        {running ? "■ Stop" : "▶ Auto"}
-      </button>
-      {SPEEDS.map((sp, i) => (
-        <button
-          key={sp.label}
-          type="button"
-          aria-pressed={auto.speed === i}
-          onClick={() => onSpeed(i)}
-          className="h-11 min-w-0 flex-1 touch-manipulation rounded-full text-[12px] leading-tight transition active:scale-95"
-          style={{ ...DISPLAY, fontWeight: 700, background: auto.speed === i ? WHITE : "transparent", color: auto.speed === i ? INK : MUTED }}
-        >
-          {sp.label}
-          <span className="block text-[9px] opacity-70" style={LABEL}>
-            {sp.rate}/s
-          </span>
-        </button>
-      ))}
-    </div>
-  );
+export function PlayControls({ unlocked, disabled, auto, running, shares, remaining, started, onRip, onAuto, onSpeed, setupOpen, onSetup }: PlayProps) {
   return (
     <div className="flex flex-col gap-2">
       <Friends shares={shares} />
-      <p className="h-4 text-center text-[11px] uppercase tracking-[0.12em]" style={{ ...LABEL, color: MUTED }}>
+      <p className="h-4 truncate text-center font-mono text-[10px] uppercase leading-4 tracking-[0.1em] text-ink/45">
         {started && remaining !== null ? (
           <>
-            <span style={{ color: CYAN }}>≈ {fmtPacks(remaining)}</span> packs to go, on average
+            <span className="text-cyan">≈ {fmtPacks(remaining)}</span> packs to go, on average
           </>
         ) : (
           "Tap the pack or the gold button"
         )}
       </p>
+      <div className="portrait:[@media(max-height:560px)]:hidden">
+        <Locked label="Auto-rip speed">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={onAuto}
+              className={`flex h-12 w-[84px] shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-xl border text-[14px] font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 ${
+                running ? "border-coral/40 bg-coral/[0.08] text-coral" : "border-hair-strong text-ink/85 hover:border-white/30 hover:text-ink"
+              }`}
+            >
+              {running ? <Icon.Pause size={16} /> : <Icon.Play size={16} className="text-mint" />}
+              {running ? "Stop" : "Auto"}
+            </button>
+            <Seg
+              label="Auto-rip speed"
+              className="h-12 min-w-0 flex-1"
+              value={auto.speed}
+              onChange={onSpeed}
+              options={SPEEDS.map((sp, i) => ({
+                v: i,
+                label: (
+                  <>
+                    {sp.label}
+                    <span className="mt-1 text-[9px] normal-case tracking-normal opacity-60">{sp.rate}/s</span>
+                  </>
+                ),
+              }))}
+            />
+          </div>
+        </Locked>
+      </div>
       <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onRip(1)}
-          className="h-14 min-w-0 flex-1 touch-manipulation rounded-full px-4 text-xl transition active:scale-[0.97] disabled:opacity-50"
-          style={pill(GOLD)}
-        >
+        <button type="button" disabled={disabled} onClick={() => onRip(1)} className={btn("primary", "lg", "min-w-0 flex-1 touch-manipulation")}>
           Rip a pack
         </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onRip(10)}
-          className="h-14 w-[112px] shrink-0 touch-manipulation rounded-full text-xl transition active:scale-[0.97] disabled:opacity-50"
-          style={pill(CYAN)}
-        >
+        <button type="button" disabled={disabled} onClick={() => onRip(10)} className={btn("ghost", "lg", "shrink-0 touch-manipulation")}>
           Rip 10
         </button>
-      </div>
-      <div className="portrait:[@media(max-height:560px)]:hidden">
-        <Locked label="Auto-rip speed">{autoRow}</Locked>
+        <button
+          type="button"
+          onClick={onSetup}
+          data-sheet-trigger
+          aria-expanded={setupOpen}
+          aria-label="Album setup"
+          className="relative flex h-[52px] shrink-0 items-center gap-1.5 rounded-xl border border-hair-strong px-3.5 text-[14px] font-medium text-ink/80 transition hover:text-ink active:scale-95"
+        >
+          <Icon.Sliders size={18} />
+          <span className="max-[360px]:hidden">Album</span>
+          {!unlocked && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-gold ring-2 ring-navy-900" />}
+        </button>
       </div>
     </div>
   );
@@ -134,6 +164,7 @@ type EndProps = {
   friends: number;
   swapEst: number | null;
   unlocked: boolean;
+  simOpen: boolean;
   onAgain: () => void;
   onSim: () => void;
   onUpsell: (reason?: string) => void;
@@ -146,19 +177,19 @@ function verdict(packs: number, expected: number) {
   return `${Math.round(luck * 100)}% more packs than the average collector. The last few are brutal.`;
 }
 
-export function EndControls({ spec, packs, easy, expected, friends, swapEst, unlocked, onAgain, onSim, onUpsell }: EndProps) {
+export function EndControls({ spec, packs, easy, expected, friends, swapEst, unlocked, simOpen, onAgain, onSim, onUpsell }: EndProps) {
   const h = harmonic(spec.n);
   const uniform = spec.nr === 0;
   return (
-    <div className="flex flex-col gap-2 text-center">
-      <p className="text-[13.5px] leading-snug" style={{ color: WHITE, ...DISPLAY, fontWeight: 700 }}>
-        {verdict(packs, expected)} <span style={{ color: MUTED, ...LABEL }}>Easy math said {fmt(easy)} packs.</span>
+    <div className="enter flex flex-col gap-2">
+      <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-ink">
+        {verdict(packs, expected)} <span className="font-normal text-ink/50">Easy math said {fmt(easy)} packs.</span>
       </p>
-      <p className="rounded-2xl px-3 py-2 text-left text-[12.5px] leading-snug" style={{ background: "#0B1124", color: SOFT, boxShadow: `0 0 0 1px ${PANEL_LINE}`, ...LABEL }}>
-        <span style={{ color: WHITE, ...DISPLAY, fontWeight: 700 }}>Why so many?</span> Each new sticker is harder to find than the last.{" "}
+      <p className="rounded-xl border border-hair bg-white/[0.025] px-3 py-2.5 text-[12.5px] leading-snug text-ink/60">
+        <span className="font-semibold text-ink">Why so many?</span> Each new sticker is harder to find than the last.{" "}
         {uniform ? (
           <>
-            On average you need <span style={{ color: GOLD, fontWeight: 700 }}>n × H(n)</span> stickers, with H(n) = 1 + ½ + ⅓ + … + 1/n. Here {fmt(spec.n)} × {h.toFixed(2)} ≈ {fmt(Math.round(spec.n * h))}, so ≈ {fmtPacks(expected)} packs of {spec.k}.
+            On average you need <span className="font-semibold text-gold">n × H(n)</span> stickers, with H(n) = 1 + ½ + ⅓ + … + 1/n. Here {fmt(spec.n)} × {h.toFixed(2)} ≈ {fmt(Math.round(spec.n * h))}, so ≈ {fmtPacks(expected)} packs of {spec.k}.
           </>
         ) : (
           <>Rare stickers turn up 5× less often, so the last ones take even longer: ≈ {fmtPacks(expected)} packs on average.</>
@@ -166,11 +197,11 @@ export function EndControls({ spec, packs, easy, expected, friends, swapEst, unl
         {friends > 0 && swapEst !== null && (
           <>
             {" "}
-            With {friends} friend{friends > 1 ? "s" : ""} swapping doubles: ≈ <span style={{ color: CYAN, fontWeight: 700 }}>{fmt(Math.round(swapEst))}</span> packs each.
+            With {friends} friend{friends > 1 ? "s" : ""} swapping doubles: ≈ <span className="font-semibold text-cyan">{fmt(Math.round(swapEst))}</span> packs each.
           </>
         )}
       </p>
-      <div className="flex gap-2">
+      <div className="mt-0.5 flex gap-2">
         <button
           type="button"
           autoFocus
@@ -178,10 +209,9 @@ export function EndControls({ spec, packs, easy, expected, friends, swapEst, unl
             tap();
             onAgain();
           }}
-          className="h-12 min-w-0 flex-1 touch-manipulation rounded-full px-4 text-lg transition active:scale-[0.97]"
-          style={pill(GOLD)}
+          className={btn("primary", "lg", "min-w-0 flex-1 touch-manipulation")}
         >
-          Play again
+          <Icon.Reset size={18} /> Play again
         </button>
         <button
           type="button"
@@ -190,26 +220,25 @@ export function EndControls({ spec, packs, easy, expected, friends, swapEst, unl
             if (unlocked) onSim();
             else onUpsell("The 10,000-album simulator");
           }}
-          className="flex h-12 shrink-0 touch-manipulation items-center gap-1.5 rounded-full px-4 text-[15px] transition active:scale-[0.97]"
-          style={pill(CYAN)}
+          data-sheet-trigger
+          aria-expanded={simOpen}
+          className={btn("ghost", "lg", "shrink-0 touch-manipulation")}
         >
-          {!unlocked && <LockIcon className="h-4 w-4" />}
+          {!unlocked && <LockIcon className="h-3.5 w-3.5 text-gold" />}
           10,000 albums
         </button>
       </div>
-      <div className="flex items-center justify-center gap-4 text-xs">
-        <a href={shortUrl(VIDEO_ID)} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center underline-offset-4 hover:underline" style={{ color: CORAL, ...LABEL }}>
-          Watch the video
+      <div className="flex flex-wrap items-center justify-center gap-x-1">
+        <a href={shortUrl(VIDEO_ID)} target="_blank" rel="noreferrer" className={`${LINK} text-ink/60 hover:text-ink`}>
+          <Icon.Youtube size={16} /> Watch the video
         </a>
         {!unlocked && (
-          <button type="button" onClick={() => onUpsell("Albums up to 980 stickers")} className="inline-flex h-11 items-center underline-offset-4 hover:underline" style={{ color: GOLD, ...LABEL }}>
-            Try the 980-sticker album
+          <button type="button" onClick={() => onUpsell("Albums up to 980 stickers")} className={`${LINK} text-gold/85 hover:text-gold`}>
+            <LockIcon className="h-3.5 w-3.5" /> Try the 980-sticker album
           </button>
         )}
       </div>
-      <p className="text-[11px]" style={{ color: MUTED, ...LABEL }}>
-        Album idea from @maximbarishov4120. Thank you!
-      </p>
+      <p className="text-center text-[11px] text-ink/35">Album idea from @maximbarishov4120. Thank you!</p>
     </div>
   );
 }

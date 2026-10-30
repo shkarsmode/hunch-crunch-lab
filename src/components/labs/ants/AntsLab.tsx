@@ -372,7 +372,7 @@ export default function AntsLab() {
 
   const speeds = ["auto", ...FREE_SPEEDS, ...FULL_SPEEDS] as Speed[];
   const speedIndex = Math.max(0, speeds.indexOf(speed));
-  const overlay = "bottom-[calc(8.25rem+env(safe-area-inset-bottom))]";
+  const overlay = "bottom-3";
   const panel = "rounded-2xl border border-hair bg-navy-850 shadow-[0_24px_60px_-20px_rgb(0_0_0/0.9)]";
 
   return (
@@ -395,6 +395,8 @@ export default function AntsLab() {
         </button>
       }
     >
+      <div className="flex h-full flex-col">
+        <div className="relative min-h-0 flex-1">
       <div ref={wrapRef} className="absolute inset-0 bg-[#05060B]">
         <canvas
           ref={canvasRef}
@@ -432,7 +434,7 @@ export default function AntsLab() {
         {isVideo && cap("collide", "They collide…", 80, "#F4F6FB", "11.2%")}
         {isVideo && cap("undo", "…and undo it all", 80, GOLD, "11.2%")}
         {cap("empty", "Back to empty", 88, GOLD, "11%")}
-        <div ref={counterEl} className="absolute inset-x-0 text-center transition-opacity duration-300" style={{ top: "76%", opacity: 0 }}>
+        <div ref={counterEl} className="absolute inset-x-0 text-center transition-opacity duration-300" style={{ top: "80%", opacity: 0 }}>
           <p ref={stepEl} className="display num font-extrabold leading-none" style={{ fontSize: u(62), color: "#DDE5F5", textShadow: SHADOW }}>
             STEP 0
           </p>
@@ -580,7 +582,9 @@ export default function AntsLab() {
         </div>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 z-30 border-t border-hair bg-navy-900 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5">
+        </div>
+
+      <div className="relative z-30 shrink-0 border-t border-hair bg-navy-900 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5">
         <div className="mx-auto max-w-md">
           <div className="relative grid h-10 grid-cols-7 rounded-xl border border-hair bg-white/[0.03] p-1" role="radiogroup" aria-label="Speed, steps a second">
             <div
@@ -640,6 +644,8 @@ export default function AntsLab() {
             </button>
           </div>
         </div>
+      </div>
+
       </div>
 
       <Sheet open={sheet} onClose={() => setSheet(false)} title="Ants and rules">

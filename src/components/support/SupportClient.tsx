@@ -186,7 +186,7 @@ export default function SupportClient() {
                     </button>
                   </li>
                   <li>
-                    <a href={PATREON_URL || CHANNEL_URL} target="_blank" rel="noreferrer" className={`${btn("primary", "lg", "h-14 w-full justify-start px-3")}`}>
+                    <a href={PATREON_URL || CHANNEL_URL} target="_blank" rel="noreferrer" className="group flex h-14 w-full items-center gap-2 rounded-xl bg-gold px-3 text-[15px] font-semibold text-[#0B0D12] shadow-[0_0_0_1px_rgb(255_201_74/0.45),0_12px_32px_-12px_rgb(255_201_74/0.55)] transition hover:bg-gold-hi active:scale-[0.98]">
                       <Step n={2}>Join on Patreon · {PRICE}/mo</Step>
                       <Icon.Out size={17} className="ml-auto" />
                     </a>
@@ -195,7 +195,7 @@ export default function SupportClient() {
                     <a
                       href={user ? "/api/patreon/login" : "#"}
                       onClick={(e) => !user && (e.preventDefault(), signIn())}
-                      className={`${btn("ghost", "lg", "h-14 w-full justify-start px-3")}`}
+                      className="group flex h-14 w-full items-center gap-2 rounded-xl border border-hair-strong px-3 text-[15px] font-semibold text-ink/85 transition hover:border-white/30 hover:text-ink active:scale-[0.98]"
                     >
                       <Step n={3}>Connect Patreon to unlock</Step>
                       <Icon.Arrow size={17} className="ml-auto" />

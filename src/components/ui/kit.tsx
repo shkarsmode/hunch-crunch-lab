@@ -5,7 +5,7 @@ import type { ComponentProps, ReactNode } from "react";
 
 export const PANEL = "rounded-2xl border border-hair bg-navy-850";
 
-type Variant = "primary" | "ghost" | "quiet";
+type Variant = "primary" | "ghost" | "quiet" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const BASE =
@@ -14,6 +14,7 @@ const VARIANT: Record<Variant, string> = {
   primary: "bg-gold text-[#0B0D12] shadow-[0_0_0_1px_rgb(255_201_74/0.45),0_12px_32px_-12px_rgb(255_201_74/0.55)] hover:bg-gold-hi",
   ghost: "border border-hair-strong text-ink/85 hover:border-white/30 hover:text-ink",
   quiet: "text-ink/70 hover:bg-white/[0.04] hover:text-ink",
+  danger: "border border-coral/30 text-coral hover:border-coral/60 hover:bg-coral/[0.06]",
 };
 const SIZE: Record<Size, string> = {
   sm: "h-9 px-3.5 text-[13px]",
@@ -21,6 +22,8 @@ const SIZE: Record<Size, string> = {
   lg: "h-[52px] px-5 text-[15px]",
 };
 
+// `extra` is for layout (width, margin, flex). Never repeat a property the variant or size sets:
+// Tailwind decides by stylesheet order, not class order, so the override can silently lose.
 export const btn = (variant: Variant = "primary", size: Size = "md", extra = "") => `${BASE} ${VARIANT[variant]} ${SIZE[size]} ${extra}`;
 
 export function ButtonLink({ variant, size, className = "", ...rest }: ComponentProps<typeof Link> & { variant?: Variant; size?: Size }) {

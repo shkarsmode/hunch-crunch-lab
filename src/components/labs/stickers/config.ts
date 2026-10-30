@@ -30,8 +30,6 @@ export const VIDEO = {
 
 export { PAL as PALETTE } from "./video";
 
-export const FRIEND_FACES = ["🦊", "🐼", "🐸", "🦄", "🐙"];
-
 export function colorOf(id: number) {
   return Math.imul(id + 1, 2654435761) >>> 29;
 }

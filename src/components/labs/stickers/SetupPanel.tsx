@@ -2,48 +2,34 @@
 
 import { useState, type ReactNode } from "react";
 import { Locked, useAccess } from "@/components/access/AccessProvider";
+import { Icon } from "@/components/ui/icons";
+import { btn } from "@/components/ui/kit";
+import { Seg } from "./Controls";
 import { ALBUM_PRESETS, FREE_CONFIG, LIMITS, VIDEO, fmt, sanitize, tap, type Config, type RareEvery } from "./config";
 
 type Props = {
   config: Config;
+  simOpen: boolean;
   onApply: (c: Config) => void;
   onSim: () => void;
 };
 
+const box = "rounded-xl border border-hair bg-white/[0.025]";
+const step = "grid h-11 w-12 place-items-center rounded-lg text-ink/70 transition hover:bg-white/5 hover:text-ink active:scale-95";
+
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
     <section>
-      <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-mist">{title}</h3>
-        {hint && <span className="text-[11px] text-mist/80">{hint}</span>}
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <h3 className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink/40">{title}</h3>
+        {hint && <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink/55">{hint}</span>}
       </div>
       {children}
     </section>
   );
 }
 
-function Seg<T extends string | number>({ value, options, onChange, label }: { value: T; options: { v: T; label: string }[]; onChange: (v: T) => void; label: string }) {
-  return (
-    <div role="group" aria-label={label} className={`grid auto-cols-fr grid-flow-col gap-1 rounded-2xl bg-navy-950/55 p-1 ring-1 ring-edge/20`}>
-      {options.map((o) => (
-        <button
-          key={String(o.v)}
-          type="button"
-          aria-pressed={value === o.v}
-          onClick={() => {
-            tap();
-            onChange(o.v);
-          }}
-          className={`h-11 rounded-xl px-1 text-[13px] font-bold transition active:scale-95 ${value === o.v ? "bg-ink text-navy-950" : "text-mist"}`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export default function SetupPanel({ config, onApply, onSim }: Props) {
+export default function SetupPanel({ config, simOpen, onApply, onSim }: Props) {
   const { unlocked } = useAccess();
   const [draft, setDraft] = useState<Config>(unlocked ? config : FREE_CONFIG);
   const shown = unlocked ? draft : FREE_CONFIG;
@@ -51,26 +37,19 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
   const isVideo = shown.n === VIDEO.n && shown.k === VIDEO.k;
 
   return (
-    <div className="space-y-4 pb-1 text-sm">
+    <div className="space-y-5 pb-1 text-[14px]">
       <Section title="Album size" hint={`${fmt(shown.n)} stickers`}>
         <Locked label="Albums up to 980 stickers">
-          <div className="rounded-2xl bg-navy-950/55 p-2.5 ring-1 ring-edge/20">
-            <div className="flex flex-wrap gap-1.5">
-              {ALBUM_PRESETS.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  aria-pressed={shown.n === n}
-                  onClick={() => {
-                    tap();
-                    patch({ n });
-                  }}
-                  className={`h-11 min-w-[44px] flex-1 rounded-xl px-1 text-[13px] font-bold transition active:scale-95 ${shown.n === n ? "bg-ink text-navy-950" : "bg-navy-800/70 text-mist"}`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
+          <div>
+            <Seg<number>
+              label="Album size presets"
+              value={shown.n}
+              onChange={(n) => {
+                tap();
+                patch({ n });
+              }}
+              options={ALBUM_PRESETS.map((n) => ({ v: n, label: String(n) }))}
+            />
             <input
               type="range"
               aria-label="Album size"
@@ -79,7 +58,7 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
               step={LIMITS.nStep}
               value={shown.n}
               onChange={(e) => patch({ n: Number(e.target.value) })}
-              className="mt-2 h-11 w-full"
+              className="mt-1 block h-11 w-full touch-manipulation"
             />
           </div>
         </Locked>
@@ -87,7 +66,7 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
 
       <Section title="Stickers per pack" hint={isVideo ? "like the video" : undefined}>
         <Locked label="Pack size">
-          <div className="flex items-center gap-2 rounded-2xl bg-navy-950/55 p-1.5 ring-1 ring-edge/20">
+          <div className={`flex items-center justify-between p-1 ${box}`}>
             <button
               type="button"
               aria-label="Fewer stickers per pack"
@@ -95,11 +74,11 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
                 tap();
                 patch({ k: Math.max(LIMITS.kMin, shown.k - 1) });
               }}
-              className="grid h-11 w-12 place-items-center rounded-xl bg-navy-800/70 text-xl font-black text-ink transition active:scale-95"
+              className={step}
             >
-              −
+              <Icon.Minus size={18} />
             </button>
-            <p className="display num flex-1 text-center text-2xl font-black text-gold">{shown.k}</p>
+            <p className="font-mono text-[20px] tabular-nums text-ink">{shown.k}</p>
             <button
               type="button"
               aria-label="More stickers per pack"
@@ -107,9 +86,9 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
                 tap();
                 patch({ k: Math.min(LIMITS.kMax, shown.k + 1) });
               }}
-              className="grid h-11 w-12 place-items-center rounded-xl bg-navy-800/70 text-xl font-black text-ink transition active:scale-95"
+              className={step}
             >
-              +
+              <Icon.Plus size={18} />
             </button>
           </div>
         </Locked>
@@ -120,7 +99,10 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
           <Seg<RareEvery>
             label="Rare stickers"
             value={shown.rareEvery}
-            onChange={(v) => patch({ rareEvery: v })}
+            onChange={(v) => {
+              tap();
+              patch({ rareEvery: v });
+            }}
             options={[
               { v: 0, label: "None" },
               { v: 10, label: "Every 10th" },
@@ -135,7 +117,10 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
           <Seg<number>
             label="Friends"
             value={shown.friends}
-            onChange={(v) => patch({ friends: v })}
+            onChange={(v) => {
+              tap();
+              patch({ friends: v });
+            }}
             options={[0, 1, 2, 3, 4, 5].map((v) => ({ v, label: v === 0 ? "Off" : String(v) }))}
           />
         </Locked>
@@ -148,10 +133,15 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
             tap();
             onSim();
           }}
-          className={`flex h-14 w-full flex-col items-start justify-center rounded-2xl bg-navy-950/55 px-4 text-left ring-1 ring-edge/20 transition active:scale-[0.98]`}
+          data-sheet-trigger
+          aria-expanded={simOpen}
+          className={`flex h-14 w-full items-center gap-3 px-3.5 text-left transition hover:border-hair-strong active:scale-[0.99] ${box}`}
         >
-          <span className="font-bold">10,000 collectors</span>
-          <span className="text-xs font-semibold text-mist">Histogram and swap test</span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">10,000 collectors</span>
+            <span className="block text-[12px] text-ink/45">Histogram and swap test</span>
+          </span>
+          <Icon.Chevron size={18} className="shrink-0 text-ink/35" />
         </button>
       </Locked>
 
@@ -163,7 +153,7 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
               tap();
               setDraft({ n: VIDEO.n, k: VIDEO.k, rareEvery: 0, friends: 0 });
             }}
-            className="h-11 w-full rounded-2xl text-[13px] font-bold text-cyan ring-1 ring-cyan/35 transition active:scale-[0.98]"
+            className="flex min-h-11 w-full items-center justify-center rounded-xl border border-hair-strong px-3 py-2 text-[13px] font-semibold leading-tight text-ink/85 transition hover:border-white/30 hover:text-ink active:scale-[0.98]"
           >
             Use the video&apos;s album: {VIDEO.n} stickers, {VIDEO.k} per pack
           </button>
@@ -174,7 +164,7 @@ export default function SetupPanel({ config, onApply, onSim }: Props) {
             tap();
             onApply(unlocked ? sanitize(draft) : FREE_CONFIG);
           }}
-          className="h-12 w-full rounded-2xl bg-gold text-base font-black text-navy-950 shadow-[0_0_28px_-8px_#ffc94a] transition active:scale-[0.98]"
+          className={btn("primary", "lg", "w-full")}
         >
           Start a new album
         </button>

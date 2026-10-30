@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@/components/ui/icons";
+import { btn } from "@/components/ui/kit";
+import { Seg } from "./Controls";
 import { VIDEO, fmt, fmtPacks, sameConfig, tap, type Config } from "./config";
 import Histogram, { type Marker, type Series } from "./Histogram";
 import { easyPacks, expectedPacks, makeSpec } from "./math";
 import { SoloSim, SwapSim, beatenShare, binCounts, drive, makeAxis, summarize, type Axis, type Summary } from "./sim";
-import { CORAL, CYAN, DEEP, DISPLAY, GOLD, INK, LABEL, MINT, MUTED, WHITE, rgba } from "./video";
+import { CYAN, GOLD, MINT } from "./video";
 
 const TOTAL = 10000;
 const GROUPS = 300;
 const BINS = 36;
+const STOP = "flex h-[52px] w-full items-center justify-center rounded-xl border border-coral/35 text-[15px] font-semibold text-coral transition hover:border-coral/60 active:scale-[0.98]";
 
 type SoloView = { running: boolean; done: number; axis: Axis | null; counts: number[]; summary: Summary | null; share: number | null };
 
@@ -17,35 +21,32 @@ type SwapView = { running: boolean; done: number; axis: Axis | null; alone: numb
 
 const idleSolo: SoloView = { running: false, done: 0, axis: null, counts: [], summary: null, share: null };
 
-function Stat({ label, value, color = WHITE }: { label: string; value: string; color?: string }) {
+function Stat({ label, value, tone = "text-ink" }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="rounded-2xl px-2 py-2 text-center" style={{ background: rgba(DEEP, 0.9) }}>
-      <p className="text-[10px] uppercase tracking-[0.12em]" style={{ color: MUTED, ...LABEL }}>
-        {label}
-      </p>
-      <p className="text-lg leading-6" style={{ color, fontVariantNumeric: "tabular-nums", ...DISPLAY }}>
-        {value}
-      </p>
+    <div className="min-w-0 rounded-xl border border-hair bg-white/[0.025] px-2.5 py-2">
+      <p className="truncate font-mono text-[9px] uppercase tracking-[0.12em] text-ink/40">{label}</p>
+      <p className={`mt-0.5 whitespace-nowrap font-mono text-[13px] leading-5 tabular-nums ${tone}`}>{value}</p>
     </div>
   );
 }
 
-function RunButton({ running, label, onStart, onStop }: { running: boolean; label: string; onStart: () => void; onStop: () => void }) {
+function RunButton({ running, label, primary = false, onStart, onStop }: { running: boolean; label: string; primary?: boolean; onStart: () => void; onStop: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={running ? onStop : onStart}
-      className="h-12 w-full rounded-full text-base transition active:scale-[0.98]"
-      style={{ background: rgba(running ? CORAL : GOLD, 0.95), boxShadow: `0 0 20px ${rgba(running ? CORAL : GOLD, 0.35)}`, color: INK, ...DISPLAY }}
-    >
-      {running ? "Stop" : label}
+    <button type="button" onClick={running ? onStop : onStart} className={running ? STOP : btn(primary ? "primary" : "ghost", "lg", "w-full")}>
+      {running ? (
+        "Stop"
+      ) : (
+        <>
+          <Icon.Play size={16} /> {label}
+        </>
+      )}
     </button>
   );
 }
 
 function Bar({ value, max, tone }: { value: number; max: number; tone: string }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full" style={{ background: rgba(DEEP, 0.9) }}>
+    <div className="h-1 overflow-hidden rounded-full bg-white/[0.07]">
       <div className={`h-full rounded-full transition-[width] duration-150 ${tone}`} style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />
     </div>
   );
@@ -168,17 +169,17 @@ export default function SimPanel({ config, yourPacks, active }: { config: Config
   const fewer = swap?.aloneSum && swap.swapSum && swap.aloneSum.mean > 0 ? 1 - swap.swapSum.mean / swap.aloneSum.mean : null;
 
   return (
-    <div className="space-y-5 pb-2 text-sm">
+    <div className="space-y-5 pb-2 text-[14px]">
       <section className="space-y-3">
-        <p className="text-[13px] leading-snug text-mist">
-          {fmt(TOTAL)} collectors each open packs until their album of <span className="font-bold text-ink">{fmt(spec.n)}</span> is full ({spec.k} per pack
+        <p className="text-[13px] leading-snug text-ink/55">
+          {fmt(TOTAL)} collectors each open packs until their album of <span className="font-semibold text-ink">{fmt(spec.n)}</span> is full ({spec.k} per pack
           {spec.nr > 0 ? `, every ${spec.rareEvery}th sticker rare` : ""}). No swapping.
         </p>
-        <RunButton running={solo.running} label={`Run ${fmt(TOTAL)} albums`} onStart={startSolo} onStop={stopSoloRun} />
+        <RunButton primary running={solo.running} label={`Run ${fmt(TOTAL)} albums`} onStart={startSolo} onStop={stopSoloRun} />
         {(solo.running || solo.done > 0) && (
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Bar value={solo.done} max={TOTAL} tone="bg-mint" />
-            <p className="num text-right text-[11px] text-mist">
+            <p className="text-right font-mono text-[10px] uppercase tracking-[0.08em] tabular-nums text-ink/45">
               {fmt(solo.done)} / {fmt(TOTAL)} albums
             </p>
           </div>
@@ -187,66 +188,76 @@ export default function SimPanel({ config, yourPacks, active }: { config: Config
         {s && (
           <>
             <div className="grid grid-cols-3 gap-1.5">
-              <Stat label="Average" value={fmtPacks(s.mean)} color={GOLD} />
+              <Stat label="Average" value={fmtPacks(s.mean)} tone="text-gold" />
               <Stat label="Median" value={fmtPacks(s.median)} />
-              <Stat label="Formula" value={`≈ ${fmtPacks(expected)}`} color={CYAN} />
-              <Stat label="Luckiest" value={fmt(s.min)} color={MINT} />
+              <Stat label="Formula" value={`≈ ${fmtPacks(expected)}`} tone="text-cyan" />
+              <Stat label="Luckiest" value={fmt(s.min)} tone="text-mint" />
               <Stat label="Middle 80%" value={`${fmt(Math.round(s.p10))}–${fmt(Math.round(s.p90))}`} />
-              <Stat label="Unluckiest" value={fmt(s.max)} color={CORAL} />
+              <Stat label="Unluckiest" value={fmt(s.max)} tone="text-coral" />
             </div>
-            <p className="text-[12px] leading-snug text-mist">
-              Average cost at ${VIDEO.price} a pack: <span className="font-bold text-ink">${fmt(Math.round(s.mean * VIDEO.price))}</span>. Easy math said ${fmt(easy * VIDEO.price)}.
+            <p className="text-[12.5px] leading-snug text-ink/55">
+              Average cost at ${VIDEO.price} a pack: <span className="font-semibold text-ink">${fmt(Math.round(s.mean * VIDEO.price))}</span>. Easy math said ${fmt(easy * VIDEO.price)}.
               {solo.share !== null && yourPacks !== null && (
                 <>
                   {" "}
-                  Your {fmt(yourPacks)} packs beat <span className="font-bold text-mint">{Math.round(solo.share * 100)}%</span> of them.
+                  Your {fmt(yourPacks)} packs beat <span className="font-semibold text-mint">{Math.round(solo.share * 100)}%</span> of them.
                 </>
               )}
             </p>
             {isVideo && (
-              <p className="rounded-2xl px-3 py-2 text-[12px] leading-snug" style={{ background: rgba(CYAN, 0.1), color: CYAN, boxShadow: `0 0 0 1px ${rgba(CYAN, 0.25)}` }}>
-                In the video, {fmt(VIDEO.collectors)} collectors averaged {fmt(VIDEO.meanPacks)} packs (median {fmt(VIDEO.medianPacks)}). Easy math said {VIDEO.easyPacks} packs (${VIDEO.easyCost}).
+              <p className="flex gap-2 rounded-xl border border-cyan/25 bg-cyan/[0.06] px-3 py-2.5 text-[12px] leading-snug text-cyan">
+                <Icon.Youtube size={16} className="mt-px shrink-0" />
+                <span>
+                  In the video, {fmt(VIDEO.collectors)} collectors averaged {fmt(VIDEO.meanPacks)} packs (median {fmt(VIDEO.medianPacks)}). Easy math said {VIDEO.easyPacks} packs (${VIDEO.easyCost}).
+                </span>
               </p>
             )}
           </>
         )}
       </section>
 
-      <section className="space-y-3 border-t border-edge/20 pt-4">
-        <h3 className="display text-lg font-black">Swap with friends</h3>
-        <p className="text-[13px] leading-snug text-mist">
+      <section className="space-y-3 border-t border-hair pt-5">
+        <h3 className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink/40">Swap with friends</h3>
+        <p className="text-[13px] leading-snug text-ink/55">
           Everyone opens a pack each round, then swaps doubles one for one. A friend with a full album gives their doubles away. We play {fmt(GROUPS)} groups and compare with collecting alone.
         </p>
-        <div role="group" aria-label="Number of friends" className="grid grid-cols-5 gap-1 rounded-2xl bg-navy-950/55 p-1 ring-1 ring-edge/20">
-          {[1, 2, 3, 4, 5].map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={friendsN === v}
-              onClick={() => {
-                tap();
-                setFriendsN(v);
-              }}
-              className={`h-11 rounded-xl text-[13px] font-bold transition active:scale-95 ${friendsN === v ? "bg-ink text-navy-950" : "text-mist"}`}
-            >
-              {v} friend{v > 1 ? "s" : ""}
-            </button>
-          ))}
-        </div>
+        <Seg<number>
+          label="Number of friends"
+          value={friendsN}
+          onChange={(v) => {
+            tap();
+            setFriendsN(v);
+          }}
+          options={[1, 2, 3, 4, 5].map((v) => ({
+            v,
+            label: (
+              <>
+                <span className="text-[13px]">{v}</span>
+                <span className="mt-1 text-[9px] opacity-60">friend{v > 1 ? "s" : ""}</span>
+              </>
+            ),
+          }))}
+        />
         <RunButton running={Boolean(swap?.running)} label="Run the swap test" onStart={startSwap} onStop={stopSwapRun} />
         {swap && (
           <>
             <Bar value={swap.done} max={GROUPS} tone="bg-cyan" />
             <Histogram axis={swap.axis} series={swapSeries} markers={[]} />
-            <div className="flex justify-center gap-4 text-[11px] font-semibold">
-              <span style={{ color: CORAL }}>■ Alone</span>
-              <span style={{ color: CYAN }}>■ With {swap.friends} friend{swap.friends > 1 ? "s" : ""}</span>
+            <div className="flex justify-center gap-4 font-mono text-[10px] uppercase tracking-[0.1em]">
+              <span className="flex items-center gap-1.5 text-coral">
+                <span className="h-2 w-2 rounded-[2px] bg-coral/60" />
+                Alone
+              </span>
+              <span className="flex items-center gap-1.5 text-cyan">
+                <span className="h-2 w-2 rounded-[2px] bg-cyan/75" />
+                With {swap.friends} friend{swap.friends > 1 ? "s" : ""}
+              </span>
             </div>
             {swap.aloneSum && swap.swapSum && (
               <div className="grid grid-cols-3 gap-1.5">
-                <Stat label="Alone" value={fmtPacks(swap.aloneSum.mean)} color={CORAL} />
-                <Stat label="Swapping" value={fmtPacks(swap.swapSum.mean)} color={CYAN} />
-                <Stat label="Fewer packs" value={fewer !== null ? `${Math.round(fewer * 100)}%` : "-"} color={MINT} />
+                <Stat label="Alone" value={fmtPacks(swap.aloneSum.mean)} tone="text-coral" />
+                <Stat label="Swapping" value={fmtPacks(swap.swapSum.mean)} tone="text-cyan" />
+                <Stat label="Fewer packs" value={fewer !== null ? `${Math.round(fewer * 100)}%` : "-"} tone="text-mint" />
               </div>
             )}
           </>

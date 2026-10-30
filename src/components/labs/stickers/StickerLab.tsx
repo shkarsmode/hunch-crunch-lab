@@ -4,22 +4,11 @@ import { useMemo, useState } from "react";
 import LabShell from "@/components/LabShell";
 import Sheet from "@/components/Sheet";
 import { useAccess } from "@/components/access/AccessProvider";
+import { Icon } from "@/components/ui/icons";
 import { FREE_CONFIG, VIDEO_ID, tap, type Config } from "./config";
 import SetupPanel from "./SetupPanel";
 import SimPanel from "./SimPanel";
 import Table from "./Table";
-
-const iconBtn = "grid h-11 w-11 shrink-0 place-items-center rounded-full text-mist ring-1 ring-edge/25 transition hover:text-ink active:scale-95";
-
-function SlidersIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
-      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
-      <circle cx="15" cy="7" r="2.2" fill="currentColor" fillOpacity="0.2" />
-      <circle cx="9" cy="17" r="2.2" fill="currentColor" fillOpacity="0.2" />
-    </svg>
-  );
-}
 
 export default function StickerLab() {
   const { unlocked, upsell } = useAccess();
@@ -35,19 +24,27 @@ export default function StickerLab() {
   const tableKey = `${round}:${config.n}:${config.k}:${config.rareEvery}:${config.friends}`;
   const yourPacks = finished && finished.round === round ? finished.packs : null;
 
-  const openSetup = () => {
+  const toggleSetup = () => {
     tap();
+    if (setupOpen) {
+      setSetupOpen(false);
+      return;
+    }
     setSetupKey((k) => k + 1);
     setSimOpen(false);
     setSetupOpen(true);
   };
 
-  const openSim = () => {
+  const toggleSim = () => {
     if (!unlocked) {
       upsell("The 10,000-album simulator");
       return;
     }
     tap();
+    if (simOpen) {
+      setSimOpen(false);
+      return;
+    }
     setSimKey((k) => k + 1);
     setSetupOpen(false);
     setSimOpen(true);
@@ -66,18 +63,35 @@ export default function StickerLab() {
   };
 
   const right = (
-    <button type="button" onClick={openSetup} className={iconBtn} aria-label="Album setup">
-      <SlidersIcon />
+    <button
+      type="button"
+      onClick={toggleSetup}
+      data-sheet-trigger
+      aria-expanded={setupOpen}
+      className="grid h-10 w-10 place-items-center rounded-xl border border-hair-strong text-ink/70 transition hover:text-ink active:scale-95"
+      aria-label="Album setup"
+      title="Album setup"
+    >
+      <Icon.Sliders size={19} />
     </button>
   );
 
   return (
     <>
-      <LabShell title="Fill the sticker album" shortTitle="Sticker album" emoji="📒" video={VIDEO_ID} right={right} grid={false}>
-        <Table key={tableKey} config={config} onFinished={(packs) => setFinished({ round, packs })} onAgain={again} onSim={openSim} />
+      <LabShell title="Fill the sticker album" shortTitle="Sticker album" tag="E003 · LIVE" video={VIDEO_ID} right={right} grid={false}>
+        <Table
+          key={tableKey}
+          config={config}
+          setupOpen={setupOpen}
+          simOpen={simOpen}
+          onFinished={(packs) => setFinished({ round, packs })}
+          onAgain={again}
+          onSim={toggleSim}
+          onSetup={toggleSetup}
+        />
       </LabShell>
       <Sheet open={setupOpen} onClose={() => setSetupOpen(false)} title="New album">
-        <SetupPanel key={setupKey} config={config} onApply={apply} onSim={openSim} />
+        <SetupPanel key={setupKey} config={config} simOpen={simOpen} onApply={apply} onSim={toggleSim} />
       </Sheet>
       <Sheet open={simOpen} onClose={() => setSimOpen(false)} title="10,000 collectors">
         <SimPanel key={simKey} config={config} yourPacks={yourPacks} active={simOpen} />

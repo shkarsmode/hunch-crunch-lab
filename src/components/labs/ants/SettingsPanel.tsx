@@ -302,7 +302,7 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
               </Section>
 
               {setup.ants.length > 1 && (
-                <button type="button" onClick={removeAnt} className={btn("ghost", "md", "w-full border-coral/30 text-coral hover:border-coral/60 hover:text-coral")}>
+                <button type="button" onClick={removeAnt} className={btn("danger", "md", "w-full")}>
                   Remove ant {sel + 1}
                 </button>
               )}
@@ -365,7 +365,7 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
                 </select>
               </label>
             </div>
-            <button type="button" onClick={searching ? stopSearch : runSearch} className={searching ? btn("ghost", "md", "mt-1.5 w-full text-coral") : btn("primary", "md", "mt-1.5 w-full")}>
+            <button type="button" onClick={searching ? stopSearch : runSearch} className={searching ? btn("danger", "md", "mt-1.5 w-full") : btn("primary", "md", "mt-1.5 w-full")}>
               {searching ? "Stop" : `Try ${fmt((2 * radius + 1) ** 2 * 4)} setups`}
             </button>
             {prog && (

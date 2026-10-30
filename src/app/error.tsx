@@ -10,7 +10,7 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
       <p className="mt-6 font-mono text-[11px] tracking-[0.12em] text-ink/40">ERROR · OUR FAULT</p>
       <h1 className="headline mt-2 text-[32px] leading-tight">Something broke.</h1>
       <p className="mt-2 text-[15px] text-ink/55">Give it another go.</p>
-      <button type="button" onClick={reset} className={btn("primary", "lg", "mt-7 px-7")}>
+      <button type="button" onClick={reset} className={btn("primary", "lg", "mt-7")}>
         Try again
       </button>
     </div>

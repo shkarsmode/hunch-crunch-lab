@@ -9,7 +9,7 @@ export default function NotFound() {
       <p className="mt-6 font-mono text-[11px] tracking-[0.12em] text-ink/40">404 · PAGE NOT FOUND</p>
       <h1 className="headline mt-2 text-[32px] leading-tight">Not even a one-in-a-million chance.</h1>
       <p className="mt-2 text-[15px] text-ink/55">This page doesn&apos;t exist.</p>
-      <Link href="/" className={btn("primary", "lg", "mt-7 px-7")}>
+      <Link href="/" className={btn("primary", "lg", "mt-7")}>
         Back to the lab
       </Link>
     </div>

@@ -16,12 +16,15 @@ import { CORAL, CYAN, GOLD, MINT, PRICE, VH, VW } from "./video";
 
 type Props = {
   config: Config;
+  setupOpen: boolean;
+  simOpen: boolean;
   onFinished: (packs: number) => void;
   onAgain: () => void;
   onSim: () => void;
+  onSetup: () => void;
 };
 
-export default function Table({ config, onFinished, onAgain, onSim }: Props) {
+export default function Table({ config, setupOpen, simOpen, onFinished, onAgain, onSim, onSetup }: Props) {
   const { unlocked, upsell } = useAccess();
   const spec = useMemo(() => makeSpec(config), [config]);
   const expected = useMemo(() => expectedPacks(spec), [spec]);
@@ -305,8 +308,8 @@ export default function Table({ config, onFinished, onAgain, onSim }: Props) {
         </div>
       </div>
 
-      <div className="min-h-[172px] flex-none px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1 landscape:min-h-0 landscape:w-[min(40%,340px)] landscape:self-center landscape:pb-3 landscape:pr-[max(0.75rem,env(safe-area-inset-right))]">
-        <div className="mx-auto w-full max-w-md">
+      <div className="no-scrollbar flex-none border-t border-hair bg-navy-900/90 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl landscape:flex landscape:w-[min(40%,340px)] landscape:flex-col landscape:overflow-y-auto landscape:border-l landscape:border-t-0 landscape:pr-[max(0.75rem,env(safe-area-inset-right))]">
+        <div className="mx-auto w-full max-w-md landscape:my-auto">
           {finale === null ? (
             <PlayControls
               unlocked={unlocked}
@@ -326,9 +329,23 @@ export default function Table({ config, onFinished, onAgain, onSim }: Props) {
                 tap();
                 setAuto((a) => ({ ...a, speed: i }));
               }}
+              setupOpen={setupOpen}
+              onSetup={onSetup}
             />
           ) : (
-            <EndControls spec={spec} packs={finale} easy={easy} expected={expected} friends={config.friends} swapEst={swapEst} unlocked={unlocked} onAgain={onAgain} onSim={onSim} onUpsell={upsell} />
+            <EndControls
+              spec={spec}
+              packs={finale}
+              easy={easy}
+              expected={expected}
+              friends={config.friends}
+              swapEst={swapEst}
+              unlocked={unlocked}
+              simOpen={simOpen}
+              onAgain={onAgain}
+              onSim={onSim}
+              onUpsell={upsell}
+            />
           )}
         </div>
       </div>
