@@ -70,6 +70,37 @@ export const Icon = {
       <path d="M5.5 12h13" />
     </Svg>
   ),
+  Sound: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3z" fill="currentColor" stroke="none" />
+      <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" />
+    </Svg>
+  ),
+  Mute: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4.5 9.5h3l4.5-4v13l-4.5-4h-3z" fill="currentColor" stroke="none" />
+      <path d="m16 9.5 5 5M21 9.5l-5 5" />
+    </Svg>
+  ),
+  Sliders: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 7.5h9M17 7.5h3M4 16.5h3M11 16.5h9" />
+      <circle cx="15" cy="7.5" r="2.2" />
+      <circle cx="9" cy="16.5" r="2.2" />
+    </Svg>
+  ),
+  Target: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="6.5" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" />
+    </Svg>
+  ),
+  Share: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M9.5 14.5 14.5 9.5M10 7.5l1.6-1.6a3.5 3.5 0 0 1 5 5L15 12.5M14 16.5l-1.6 1.6a3.5 3.5 0 0 1-5-5L9 11.5" />
+    </Svg>
+  ),
   Close: (p: IconProps) => (
     <Svg {...p}>
       <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />

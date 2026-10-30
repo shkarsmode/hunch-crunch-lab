@@ -5,6 +5,8 @@ import LabShell from "@/components/LabShell";
 import Crunchy from "@/components/Crunchy";
 import Sheet from "@/components/Sheet";
 import { LockIcon, useAccess } from "@/components/access/AccessProvider";
+import { Icon } from "@/components/ui/icons";
+import { btn } from "@/components/ui/kit";
 import { ANT_COLORS, VIDEO_SETUP, World, decodeSetup, encodeSetup, type Setup } from "./engine";
 import { AntView } from "./view";
 import { Clicker } from "./sound";
@@ -23,6 +25,18 @@ const same = (a: Setup, b: Setup) => JSON.stringify(a) === JSON.stringify(b);
 const noop = () => () => {};
 const u = (n: number) => `calc(var(--sw) * ${n} / 1080)`;
 const SHADOW = "0 0.06em 0.35em rgba(0,0,0,0.55)";
+const INFO = [
+  ["Two rules.", "On a dark square, turn right. On a lit square, turn left. Then flip the square and step forward."],
+  ["Two ants.", "They take turns, one step each, on the same empty grid. The second starts 15 squares left and 5 up, facing right. The first faces up."],
+  ["One ant alone", "builds a highway after about 10,000 steps and never stops. These two build a mess, then highways, then a giant rectangle. Their highways collide, and from there they undo every square they ever lit."],
+  ["At step 84,876", "the grid is empty again and both ants are back where they started, facing the same way. So it repeats forever."],
+];
+const KEYS = [
+  ["DRAG", "look around"],
+  ["PINCH · SCROLL", "zoom in and out"],
+  ["SPACE", "play and pause"],
+  ["R · F", "restart · follow"],
+];
 
 export default function AntsLab() {
   const { unlocked, upsell, flag, loading } = useAccess();
@@ -58,7 +72,6 @@ export default function AntsLab() {
   const [sound, setSound] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [info, setInfo] = useState(false);
-  const [speedMenu, setSpeedMenu] = useState(false);
   const [hunchDone, setHunchDone] = useState(false);
   const [hunch, setHunch] = useState<"home" | "chaos" | null>(null);
   const [home, setHome] = useState(0);
@@ -215,7 +228,6 @@ export default function AntsLab() {
     }
     st.current.speed = s;
     setSpeed(s);
-    setSpeedMenu(false);
   };
 
   const toggleSound = () => {
@@ -358,15 +370,25 @@ export default function AntsLab() {
     </p>
   );
 
+  const speeds = ["auto", ...FREE_SPEEDS, ...FULL_SPEEDS] as Speed[];
+  const speedIndex = Math.max(0, speeds.indexOf(speed));
+  const overlay = "bottom-[calc(8.25rem+env(safe-area-inset-bottom))]";
+  const panel = "rounded-2xl border border-hair bg-navy-850/95 shadow-[0_24px_60px_-20px_rgb(0_0_0/0.9)] backdrop-blur-xl";
+
   return (
     <LabShell
       title="Two ants, same 2 rules"
       shortTitle="Two ants"
-      emoji="🐜"
+      tag="E030 · LIVE"
       grid={false}
       video="qKFPDHmAR4Q"
       right={
-        <button type="button" onClick={() => setInfo(true)} className="grid h-10 w-10 place-items-center rounded-full font-black text-mist ring-1 ring-edge/25 hover:text-ink" aria-label="How it works">
+        <button
+          type="button"
+          onClick={() => setInfo(true)}
+          className="grid h-10 w-10 place-items-center rounded-xl border border-hair-strong font-mono text-[14px] text-ink/70 transition hover:text-ink active:scale-95"
+          aria-label="How it works"
+        >
           ?
         </button>
       }
@@ -408,7 +430,7 @@ export default function AntsLab() {
         {isVideo && cap("collide", "They collide…", 80, "#F4F6FB", "11.2%")}
         {isVideo && cap("undo", "…and undo it all", 80, GOLD, "11.2%")}
         {cap("empty", "Back to empty", 88, GOLD, "11%")}
-        <div ref={counterEl} className="absolute inset-x-0 text-center transition-opacity duration-300" style={{ top: "79.5%", opacity: 0 }}>
+        <div ref={counterEl} className="absolute inset-x-0 text-center transition-opacity duration-300" style={{ top: "76%", opacity: 0 }}>
           <p ref={stepEl} className="display num font-extrabold leading-none" style={{ fontSize: u(62), color: "#DDE5F5", textShadow: SHADOW }}>
             STEP 0
           </p>
@@ -425,85 +447,120 @@ export default function AntsLab() {
             viewRef.current?.follow();
             setFollow(true);
           }}
-          className="glass absolute right-3 top-2 flex h-10 items-center gap-1.5 rounded-full px-3 text-xs font-bold animate-pop"
+          className="enter absolute right-3 top-3 flex h-9 items-center gap-1.5 rounded-lg border border-hair-strong bg-black/60 px-3 font-mono text-[10px] tracking-[0.1em] text-ink/80 backdrop-blur-md transition active:scale-95"
         >
-          <span aria-hidden>◎</span> Follow
+          <Icon.Target size={15} /> FOLLOW
         </button>
       )}
 
       {((shared && !unlocked) || blockedShare) && (
-        <button type="button" onClick={() => upsell(blockedShare ? "Shared setups" : "Making your own setups")} className="glass absolute inset-x-4 top-[24%] mx-auto flex max-w-sm items-center gap-2 rounded-2xl px-3 py-2 text-left text-xs animate-rise">
-          <span>🔗</span>
-          <span className="flex-1">{blockedShare ? "Someone shared a setup from the full lab." : "A setup shared from the full lab. Make your own?"}</span>
-          <span className="font-black text-gold">Unlock</span>
+        <button
+          type="button"
+          onClick={() => upsell(blockedShare ? "Shared setups" : "Making your own setups")}
+          className={`enter absolute inset-x-3 top-3 mx-auto flex max-w-sm items-center gap-3 px-3 py-2.5 text-left ${panel}`}
+        >
+          <Icon.Share size={18} className="shrink-0 text-ant-a" />
+          <span className="flex-1 text-[13px] text-ink/75">{blockedShare ? "Someone shared a setup from the full lab." : "A setup shared from the full lab. Make your own?"}</span>
+          <span className="font-mono text-[10px] tracking-[0.1em] text-gold">UNLOCK</span>
         </button>
       )}
 
       {placing !== null && (
-        <div className="absolute inset-x-4 top-[24%] mx-auto flex max-w-sm items-center gap-2 rounded-2xl bg-cyan px-4 py-2.5 text-sm font-bold text-navy-950 shadow-2xl animate-pop">
-          <span className="flex-1">Tap a square to place ant {placing + 1}</span>
-          <button type="button" onClick={() => setPlacing(null)} className="rounded-full bg-navy-950/15 px-3 py-1">
+        <div className={`enter absolute inset-x-3 top-3 mx-auto flex max-w-sm items-center gap-3 px-3 py-2.5 ${panel}`}>
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ background: ANT_COLORS[setup.ants[placing]?.color ?? 0], boxShadow: `0 0 10px ${ANT_COLORS[setup.ants[placing]?.color ?? 0]}` }}
+          />
+          <span className="flex-1 text-[14px]">Tap a square to place ant {placing + 1}</span>
+          <button type="button" onClick={() => setPlacing(null)} className={btn("ghost", "sm")}>
             Cancel
           </button>
         </div>
       )}
 
       {edge && (
-        <div className="absolute inset-x-4 top-[24%] mx-auto flex max-w-sm items-center gap-3 rounded-2xl bg-coral px-4 py-3 text-sm font-bold text-navy-950 shadow-2xl animate-pop">
-          <span className="flex-1">An ant walked off the edge of the lab.</span>
-          <button type="button" onClick={restart} className="rounded-full bg-navy-950/15 px-3 py-1">
+        <div className={`enter absolute inset-x-3 top-3 mx-auto flex max-w-sm items-center gap-3 px-3 py-2.5 ${panel}`}>
+          <span className="font-mono text-[13px] text-coral">!</span>
+          <span className="flex-1 text-[14px]">An ant walked off the edge of the lab.</span>
+          <button type="button" onClick={restart} className={btn("ghost", "sm")}>
             Restart
           </button>
         </div>
       )}
 
       {toast && (
-        <div className="pointer-events-none absolute inset-x-4 bottom-28 flex justify-center">
-          <p className="max-w-full truncate rounded-full bg-ink px-4 py-2 text-sm font-bold text-navy-950 animate-pop">{toast}</p>
+        <div className={`pointer-events-none absolute inset-x-4 ${overlay} flex justify-center`}>
+          <p className="enter max-w-full truncate rounded-lg bg-ink px-4 py-2 text-[13px] font-semibold text-[#0B0D12]">{toast}</p>
         </div>
       )}
 
       {askHunch && (
-        <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4">
-          <div className="glass relative w-full max-w-sm rounded-3xl p-4 pt-5 text-center shadow-2xl animate-rise">
-            <Crunchy size={52} mood="squint" className="absolute -top-8 left-1/2 -translate-x-1/2" />
-            <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gold">Got a hunch? Lock it in.</p>
-            <p className="display mt-1 text-lg font-black leading-tight">Will they ever clean up their mess?</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => { setHunch("home"); play(); }} className="rounded-2xl bg-mint px-3 py-2.5 text-sm font-black text-navy-950 active:scale-95">
-                They come home
+        <div className={`absolute inset-x-0 ${overlay} z-20 flex justify-center px-3`}>
+          <div className={`sheet-up relative w-full max-w-sm p-4 pt-6 ${panel}`}>
+            <Crunchy size={46} mood="squint" shadow={false} className="absolute -top-7 left-4" />
+            <p className="font-mono text-[10px] tracking-[0.12em] text-gold">GOT A HUNCH? LOCK IT IN.</p>
+            <p className="mt-1 text-[19px] font-bold leading-tight tracking-[-0.02em]">Will they ever clean up their mess?</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setHunch("home");
+                  play();
+                }}
+                className="flex h-[60px] flex-col items-start justify-center rounded-xl border border-mint/30 bg-mint/[0.06] px-3 text-left transition active:scale-[0.98]"
+              >
+                <span className="font-mono text-[9px] tracking-[0.12em] text-mint">A</span>
+                <span className="text-[15px] font-semibold">They come home</span>
               </button>
-              <button type="button" onClick={() => { setHunch("chaos"); play(); }} className="rounded-2xl bg-coral px-3 py-2.5 text-sm font-black text-navy-950 active:scale-95">
-                Chaos forever
+              <button
+                type="button"
+                onClick={() => {
+                  setHunch("chaos");
+                  play();
+                }}
+                className="flex h-[60px] flex-col items-start justify-center rounded-xl border border-coral/30 bg-coral/[0.06] px-3 text-left transition active:scale-[0.98]"
+              >
+                <span className="font-mono text-[9px] tracking-[0.12em] text-coral">B</span>
+                <span className="text-[15px] font-semibold">Chaos forever</span>
               </button>
             </div>
-            <button type="button" onClick={() => setHunchDone(true)} className="mt-2 text-xs text-mist underline-offset-4 hover:underline">
-              Just let me watch
+            <button type="button" onClick={() => setHunchDone(true)} className="mt-3 w-full text-center font-mono text-[10px] tracking-[0.1em] text-ink/40 transition hover:text-ink/70">
+              JUST LET ME WATCH
             </button>
           </div>
         </div>
       )}
 
       {home > 0 && (
-        <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4">
-          <div className="glass relative w-full max-w-sm rounded-3xl p-4 pt-5 text-center shadow-2xl animate-pop">
-            <Crunchy size={56} mood="grin" className="absolute -top-9 left-1/2 -translate-x-1/2 animate-crunch" />
-            <p className="display num mt-2 font-extrabold leading-none" style={{ fontSize: "1.65rem", color: GOLD }}>
-              STEP {fmt(home)}
-            </p>
-            <p className="num mt-1 text-sm font-semibold" style={{ color: GOLD }}>
-              0 CELLS LIT
-            </p>
-            <p className="mt-2 text-sm text-mist">
+        <div className={`absolute inset-x-0 ${overlay} z-20 flex justify-center px-3`}>
+          <div className={`sheet-up relative w-full max-w-sm p-4 pt-6 ${panel}`}>
+            <Crunchy size={50} mood="grin" shadow={false} className="absolute -top-8 left-4 animate-crunch" />
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="font-mono text-[22px] tabular-nums text-gold">STEP {fmt(home)}</p>
+              <p className="font-mono text-[10px] tracking-[0.1em] text-gold/80">0 CELLS LIT</p>
+            </div>
+            <p className="mt-2 text-[14px] leading-snug text-ink/60">
               {isVideo ? "Empty grid, both ants on their starting squares, facing the same way. It repeats forever." : "Empty grid, every ant back where it started. It repeats forever."}
             </p>
-            {hunch && isVideo && <p className="mt-1.5 text-sm font-bold">{hunch === "home" ? "Your hunch was right. 🎯" : "Your hunch said chaos. The ants disagree. 😏"}</p>}
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => { restart(); window.setTimeout(play, 30); }} className="rounded-2xl bg-ink px-3 py-2.5 text-sm font-black text-navy-950 active:scale-95">
-                Watch again
+            {hunch && isVideo && (
+              <p className={`mt-2 flex items-center gap-2 text-[14px] font-semibold ${hunch === "home" ? "text-mint" : "text-coral"}`}>
+                {hunch === "home" ? <Icon.Check size={16} /> : <Icon.Close size={15} />}
+                {hunch === "home" ? "Your hunch was right." : "Your hunch said chaos. The ants disagree."}
+              </p>
+            )}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  restart();
+                  window.setTimeout(play, 30);
+                }}
+                className={btn("ghost", "md")}
+              >
+                <Icon.Reset size={16} /> Watch again
               </button>
-              <button type="button" onClick={keepGoing} className="rounded-2xl px-3 py-2.5 text-sm font-bold ring-1 ring-edge/40 active:scale-95">
-                Keep going
+              <button type="button" onClick={keepGoing} className={btn("ghost", "md")}>
+                Keep going <Icon.Arrow size={16} />
               </button>
             </div>
             <button
@@ -513,77 +570,98 @@ export default function AntsLab() {
                 if (unlocked) setSheet(true);
                 else upsell("Your own ants");
               }}
-              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-2xl bg-gold px-3 py-2.5 text-sm font-black text-navy-950 active:scale-95"
+              className={btn("primary", "md", "mt-2 w-full")}
             >
-              {!unlocked && <LockIcon />} Try your own ants
+              {!unlocked && <LockIcon className="h-3.5 w-3.5" />} Try your own ants
             </button>
           </div>
         </div>
       )}
 
-      {speedMenu && (
-        <div className="absolute inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-4">
-          <div className="glass flex flex-wrap justify-center gap-1.5 rounded-2xl p-2 shadow-2xl animate-pop">
-            {(["auto", ...FREE_SPEEDS, ...FULL_SPEEDS] as Speed[]).map((s) => {
+      <div className="absolute inset-x-0 bottom-0 z-30 border-t border-hair bg-navy-900/90 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl">
+        <div className="mx-auto max-w-md">
+          <div className="relative grid h-10 grid-cols-7 rounded-xl border border-hair bg-white/[0.03] p-1" role="radiogroup" aria-label="Speed, steps a second">
+            <div
+              className="absolute inset-y-1 left-1 rounded-lg bg-white/[0.12] transition-transform duration-200 ease-out"
+              style={{ width: "calc((100% - 8px) / 7)", transform: `translateX(${speedIndex * 100}%)` }}
+            />
+            {speeds.map((s) => {
               const locked = typeof s === "number" && s > 10000 && !unlocked;
+              const on = speed === s;
               return (
                 <button
                   key={String(s)}
                   type="button"
+                  role="radio"
+                  aria-checked={on}
                   onClick={() => pickSpeed(s)}
-                  className={`num flex h-10 items-center gap-1 rounded-xl px-3 text-sm font-bold transition ${speed === s ? "bg-ink text-navy-950" : "hover:bg-ink/5"} ${locked ? "text-gold" : ""}`}
+                  className={`relative flex items-center justify-center gap-0.5 font-mono text-[11px] transition ${on ? "text-ink" : locked ? "text-gold/70" : "text-ink/45 hover:text-ink/80"}`}
+                  title={s === "auto" ? "The pace of the video" : `${label(s)} steps`}
                 >
-                  {locked && <LockIcon className="h-3.5 w-3.5" />}
-                  {label(s)}
+                  {locked && <LockIcon className="h-2.5 w-2.5" />}
+                  {s === "auto" ? "AUTO" : label(s).replace("/s", "")}
                 </button>
               );
             })}
           </div>
-        </div>
-      )}
-
-      <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="glass flex items-center gap-1.5 rounded-full p-1.5 shadow-2xl">
-          <button type="button" onClick={restart} className="grid h-12 w-12 place-items-center rounded-full text-xl text-mist transition hover:text-ink active:scale-90" aria-label="Restart">
-            ↺
-          </button>
-          <button
-            type="button"
-            onClick={() => (running ? stop() : play())}
-            className="grid h-14 w-14 place-items-center rounded-full bg-gold text-navy-950 shadow-[0_0_30px_-6px_#ffc94a] transition active:scale-90"
-            aria-label={running ? "Pause" : "Play"}
-          >
-            {running ? (
-              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden><rect x="6" y="5" width="4.2" height="14" rx="1.2" /><rect x="13.8" y="5" width="4.2" height="14" rx="1.2" /></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" className="ml-0.5 h-6 w-6" fill="currentColor" aria-hidden><path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l11.6-7.2a1 1 0 0 0 0-1.72L8.5 3.94A1 1 0 0 0 7 4.8Z" /></svg>
-            )}
-          </button>
-          <button type="button" onClick={() => setSpeedMenu((v) => !v)} className="num h-12 min-w-[4.5rem] rounded-full px-3 text-sm font-black ring-1 ring-edge/30 transition active:scale-95" aria-label="Speed">
-            {label(speed)}
-          </button>
-          <button type="button" onClick={toggleSound} className={`grid h-12 w-12 place-items-center rounded-full transition active:scale-90 ${sound ? "text-gold" : "text-mist"}`} aria-label={sound ? "Sound off" : "Sound on"}>
-            {sound ? "🔊" : "🔈"}
-          </button>
-          <button type="button" onClick={() => setSheet(true)} className="relative grid h-12 w-12 place-items-center rounded-full text-mist transition hover:text-ink active:scale-90" aria-label="Settings">
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M4 7h10M18 7h2M4 17h4M12 17h8" strokeLinecap="round" /><circle cx="16" cy="7" r="2.2" /><circle cx="10" cy="17" r="2.2" /></svg>
-            {!unlocked && <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-gold" />}
-          </button>
+          <div className="mt-2 flex items-center gap-2">
+            <button type="button" onClick={restart} className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-hair-strong text-ink/75 transition hover:text-ink active:scale-95" aria-label="Restart">
+              <Icon.Reset size={19} />
+            </button>
+            <button
+              type="button"
+              onClick={() => (running ? stop() : play())}
+              className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-xl text-[15px] font-semibold transition active:scale-[0.98] ${running ? "border border-hair-strong text-ink" : "bg-gold text-[#0B0D12] shadow-[0_0_0_1px_rgb(255_201_74/0.45),0_10px_30px_-12px_rgb(255_201_74/0.6)]"}`}
+              aria-label={running ? "Pause" : "Play"}
+            >
+              {running ? <Icon.Pause size={18} /> : <Icon.Play size={18} />}
+              {running ? "Pause" : home > 0 || edge ? "Play again" : "Play"}
+            </button>
+            <button
+              type="button"
+              onClick={toggleSound}
+              className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl border transition active:scale-95 ${sound ? "border-gold/40 text-gold" : "border-hair-strong text-ink/60"}`}
+              aria-label={sound ? "Sound off" : "Sound on"}
+            >
+              {sound ? <Icon.Sound size={19} /> : <Icon.Mute size={19} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSheet(true)}
+              className="relative flex h-12 shrink-0 items-center gap-1.5 rounded-xl border border-hair-strong px-3 text-[14px] font-medium text-ink/80 transition hover:text-ink active:scale-95"
+              aria-label="Ants and rules"
+            >
+              <Icon.Sliders size={18} /> Ants
+              {!unlocked && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-gold ring-2 ring-navy-900" />}
+            </button>
+          </div>
         </div>
       </div>
 
-      <Sheet open={sheet} onClose={() => setSheet(false)} title="Your ants">
+      <Sheet open={sheet} onClose={() => setSheet(false)} title="Ants and rules">
         <SettingsPanel setup={setup} onChange={change} onPlace={(i) => (unlocked ? setPlacing(i) : upsell("Placing ants"))} onJump={jump} onShare={share} onClose={() => setSheet(false)} />
       </Sheet>
 
       <Sheet open={info} onClose={() => setInfo(false)} title="How it works">
-        <div className="space-y-3 text-sm text-mist">
-          <p><span className="font-bold text-ink">Two rules.</span> On a dark square, turn right. On a lit square, turn left. Then flip the square and step forward.</p>
-          <p><span className="font-bold text-ink">Two ants.</span> They take turns, one step each, on the same empty grid. The second starts 15 squares left and 5 up, facing right. The first faces up.</p>
-          <p><span className="font-bold text-ink">One ant alone</span> builds a highway after about 10,000 steps and never stops. These two build a mess, then highways, then a giant rectangle. Their highways collide, and from there they undo every square they ever lit.</p>
-          <p><span className="font-bold text-ink">At step 84,876</span> the grid is empty again and both ants are back where they started, facing the same way. So it repeats forever.</p>
-          <p>Auto plays it at the same pace as the video. Drag to look around, pinch or scroll to zoom. Space plays and pauses.</p>
+        <ol className="divide-y divide-hair border-y border-hair text-[14px] leading-relaxed text-ink/60">
+          {INFO.map(([lead, text], i) => (
+            <li key={lead} className="flex gap-3 py-3">
+              <span className="font-mono text-[11px] leading-[1.7] text-gold">{String(i + 1).padStart(2, "0")}</span>
+              <p>
+                <span className="font-semibold text-ink">{lead}</span> {text}
+              </p>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {KEYS.map(([k, v]) => (
+            <div key={k} className="rounded-lg border border-hair px-3 py-2">
+              <div className="font-mono text-[10px] tracking-[0.08em] text-ink/80">{k}</div>
+              <div className="text-[12px] text-ink/50">{v}</div>
+            </div>
+          ))}
         </div>
+        <p className="mt-3 text-[13px] text-ink/45">Auto plays it at the same pace as the video.</p>
       </Sheet>
     </LabShell>
   );

@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Locked, useAccess } from "@/components/access/AccessProvider";
+import { Icon } from "@/components/ui/icons";
+import { AntsThumb } from "@/components/ui/thumbs";
+import { btn } from "@/components/ui/kit";
 import { ANT_COLORS, parseRule, type AntSpec, type Setup } from "./engine";
 import { PRESETS, RULE_CHIPS } from "./presets";
 
@@ -16,22 +19,28 @@ type Props = {
   onClose: () => void;
 };
 
-const ARROWS = ["↑", "→", "↓", "←"];
+const DIRS = ["up", "right", "down", "left"];
+const TABS = ["presets", "ants", "lab"] as const;
 const fmt = (n: number) => n.toLocaleString("en-US");
-const box = "rounded-xl bg-navy-950/55 ring-1 ring-edge/25";
+const box = "rounded-xl border border-hair bg-white/[0.025]";
+const same = (a: Setup, b: Setup) => JSON.stringify(a) === JSON.stringify(b);
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-5">
-      <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-mist">{title}</h3>
+      <h3 className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink/40">{title}</h3>
       {children}
     </section>
   );
 }
 
+function Arrow({ d }: { d: number }) {
+  return <Icon.Arrow size={18} style={{ transform: `rotate(${d * 90 - 90}deg)` }} />;
+}
+
 export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShare, onClose }: Props) {
   const { unlocked, upsell } = useAccess();
-  const [tab, setTab] = useState<"presets" | "ants" | "lab">("presets");
+  const [tab, setTab] = useState<(typeof TABS)[number]>("presets");
   const [sel, setSel] = useState(0);
   const [draft, setDraft] = useState<{ key: string; value: string } | null>(null);
   const [searching, setSearching] = useState(false);
@@ -103,27 +112,37 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
   };
 
   return (
-    <div className="text-sm">
+    <div className="text-[14px]">
       {!unlocked && (
-        <button type="button" onClick={() => upsell("Changing the ants")} className="mb-4 flex w-full items-center gap-3 rounded-2xl bg-gold/10 p-3 text-left ring-1 ring-gold/35">
-          <span className="text-2xl">🐜</span>
-          <span className="flex-1">
-            <span className="block font-bold text-gold">You&apos;re playing the video&apos;s setup</span>
-            <span className="block text-xs text-mist">Unlock the full lab to change anything here.</span>
+        <button
+          type="button"
+          onClick={() => upsell("Changing the ants")}
+          className="mb-4 flex w-full items-center gap-3 rounded-xl border border-gold/30 bg-gold/[0.05] p-3 text-left transition active:scale-[0.99]"
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-hair bg-navy-950">
+            <AntsThumb className="h-7 w-7" cell={1.1} />
           </span>
-          <span className="rounded-full bg-gold px-3 py-1.5 text-xs font-black text-navy-950">$3</span>
+          <span className="flex-1">
+            <span className="block font-semibold text-gold">You&apos;re playing the video&apos;s setup</span>
+            <span className="block text-[12px] text-ink/50">Unlock the full lab to change anything here.</span>
+          </span>
+          <span className="rounded-lg bg-gold px-2.5 py-1.5 font-mono text-[11px] text-[#0B0D12]">$3</span>
         </button>
       )}
 
-      <div className={`mb-4 grid grid-cols-3 gap-1 p-1 ${box}`} role="tablist">
-        {(["presets", "ants", "lab"] as const).map((t) => (
+      <div className="relative mb-4 grid grid-cols-3 rounded-xl border border-hair bg-white/[0.03] p-1" role="tablist">
+        <div
+          className="absolute inset-y-1 left-1 rounded-lg bg-white/[0.12] transition-transform duration-200 ease-out"
+          style={{ width: "calc((100% - 8px) / 3)", transform: `translateX(${TABS.indexOf(tab) * 100}%)` }}
+        />
+        {TABS.map((t) => (
           <button
             key={t}
             type="button"
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={`rounded-lg py-2 text-xs font-bold capitalize transition ${tab === t ? "bg-ink text-navy-950" : "text-mist hover:text-ink"}`}
+            className={`relative py-2 font-mono text-[11px] uppercase tracking-[0.08em] transition ${tab === t ? "text-ink" : "text-ink/45 hover:text-ink/80"}`}
           >
             {t}
           </button>
@@ -131,8 +150,9 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
       </div>
 
       {tab === "presets" && (
-        <div className="grid gap-2">
+        <div className="grid gap-1.5">
           {PRESETS.map((p) => {
+            const current = same(p.setup, setup);
             const card = (
               <button
                 type="button"
@@ -140,19 +160,21 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
                   onChange(p.setup);
                   onClose();
                 }}
-                className={`flex w-full items-center gap-3 p-3 text-left transition hover:ring-gold/50 ${box}`}
+                className={`flex w-full items-center gap-3 p-3 text-left transition ${box} ${current ? "border-gold/45 bg-gold/[0.04]" : "hover:border-hair-strong"}`}
               >
-                <span className="flex -space-x-1">
+                <span className="flex w-9 shrink-0 -space-x-1">
                   {p.setup.ants.map((a, i) => (
-                    <span key={i} className="h-3.5 w-3.5 rounded-full ring-2 ring-navy-900" style={{ background: ANT_COLORS[a.color] }} />
+                    <span key={i} className="h-3.5 w-3.5 rounded-full ring-2 ring-navy-850" style={{ background: ANT_COLORS[a.color] }} />
                   ))}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-bold">
-                    {p.name} {p.free && <span className="ml-1 rounded bg-mint/15 px-1.5 py-0.5 text-[10px] font-black uppercase text-mint">Free</span>}
+                  <span className="flex items-center gap-2 font-semibold">
+                    {p.name}
+                    {p.free && <span className="font-mono text-[9px] tracking-[0.1em] text-mint">FREE</span>}
                   </span>
-                  <span className="block truncate text-xs text-mist">{p.line}</span>
+                  <span className="block truncate text-[12px] text-ink/45">{p.line}</span>
                 </span>
+                {current && <Icon.Check size={16} className="shrink-0 text-gold" />}
               </button>
             );
             return p.free ? <div key={p.id}>{card}</div> : <Locked key={p.id} label={`The "${p.name}" preset`}>{card}</Locked>;
@@ -163,21 +185,21 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
       {tab === "ants" && (
         <Locked label="The ant editor">
           <Section title={`Ants · ${setup.ants.length} of 6`}>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {setup.ants.map((a, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setSel(i)}
-                  className={`flex h-10 items-center gap-2 rounded-full px-3 font-bold transition ${i === sel ? "bg-ink text-navy-950" : "bg-navy-950/55 ring-1 ring-edge/25"}`}
+                  className={`flex h-10 items-center gap-2 rounded-lg px-3 font-mono text-[12px] transition ${i === sel ? "bg-ink text-[#0B0D12]" : `${box} text-ink/70`}`}
                 >
-                  <span className="h-3 w-3 rounded-full" style={{ background: ANT_COLORS[a.color] }} />
-                  {i + 1}
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: ANT_COLORS[a.color], boxShadow: i === sel ? "none" : `0 0 8px ${ANT_COLORS[a.color]}` }} />
+                  ANT {i + 1}
                 </button>
               ))}
               {setup.ants.length < 6 && (
-                <button type="button" onClick={addAnt} className="h-10 rounded-full px-3 font-bold text-gold ring-1 ring-gold/40">
-                  + Ant
+                <button type="button" onClick={addAnt} className="flex h-10 items-center gap-1.5 rounded-lg border border-dashed border-gold/40 px-3 font-mono text-[12px] text-gold transition active:scale-95">
+                  <Icon.Plus size={14} /> ANT
                 </button>
               )}
             </div>
@@ -193,16 +215,24 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
                     setDraft({ key: ruleKey, value: v });
                     if (parseRule(v)) patch({ rule: v });
                   }}
-                  className={`num w-full px-3 py-2.5 font-mono text-base tracking-[0.2em] outline-none focus:ring-gold/60 ${box} ${parseRule(rule) ? "" : "ring-coral/60"}`}
+                  className={`w-full px-3 py-2.5 font-mono text-[17px] tracking-[0.3em] outline-none transition focus:border-gold/60 ${box} ${parseRule(rule) ? "" : "border-coral/60"}`}
                   aria-label="Rule"
                   inputMode="text"
                   autoCapitalize="characters"
                   spellCheck={false}
                 />
-                <p className="mt-1.5 text-xs text-mist">One letter per colour of square: R right, L left, N straight, U turn back.</p>
+                <p className="mt-1.5 text-[12px] leading-snug text-ink/45">One letter per colour of square: R right, L left, N straight, U turn back.</p>
                 <div className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto">
                   {RULE_CHIPS.map((r) => (
-                    <button key={r} type="button" onClick={() => { setDraft(null); patch({ rule: r }); }} className={`shrink-0 rounded-full px-2.5 py-1 font-mono text-xs ${ant.rule === r ? "bg-gold text-navy-950" : "bg-navy-950/55 ring-1 ring-edge/25"}`}>
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => {
+                        setDraft(null);
+                        patch({ rule: r });
+                      }}
+                      className={`h-8 shrink-0 rounded-lg px-2.5 font-mono text-[12px] transition ${ant.rule === r ? "bg-gold text-[#0B0D12]" : `${box} text-ink/70`}`}
+                    >
                       {r}
                     </button>
                   ))}
@@ -210,45 +240,69 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
               </Section>
 
               <Section title="Facing">
-                <div className="grid grid-cols-4 gap-2">
-                  {ARROWS.map((a, d) => (
-                    <button key={a} type="button" onClick={() => patch({ d })} className={`h-11 rounded-xl text-lg font-black transition ${ant.d === d ? "bg-ink text-navy-950" : box}`} aria-label={`Face ${["up", "right", "down", "left"][d]}`}>
-                      {a}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {DIRS.map((name, d) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => patch({ d })}
+                      className={`grid h-11 place-items-center rounded-xl transition ${ant.d === d ? "bg-ink text-[#0B0D12]" : `${box} text-ink/70`}`}
+                      aria-label={`Face ${name}`}
+                    >
+                      <Arrow d={d} />
                     </button>
                   ))}
                 </div>
               </Section>
 
               <Section title={sel === 0 ? "Start square" : "Start square, from ant 1"}>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   {(["x", "y"] as const).map((k) => {
                     const rel = sel === 0 ? ant[k] : ant[k] - setup.ants[0][k];
                     return (
                       <div key={k} className={`flex items-center justify-between p-1 ${box}`}>
-                        <button type="button" onClick={() => patch({ [k]: ant[k] - 1 })} className="h-9 w-9 rounded-lg text-lg font-black hover:bg-ink/5" aria-label={`${k} minus one`}>−</button>
-                        <span className="num font-bold">
-                          {k === "x" ? (rel < 0 ? `${-rel} left` : rel > 0 ? `${rel} right` : "0") : rel < 0 ? `${-rel} up` : rel > 0 ? `${rel} down` : "0"}
+                        <button type="button" onClick={() => patch({ [k]: ant[k] - 1 })} className="grid h-9 w-9 place-items-center rounded-lg text-ink/70 hover:bg-white/5" aria-label={`${k} minus one`}>
+                          <Icon.Minus size={16} />
+                        </button>
+                        <span className="font-mono text-[12px]">
+                          {k === "x" ? (rel < 0 ? `${-rel} LEFT` : rel > 0 ? `${rel} RIGHT` : "0") : rel < 0 ? `${-rel} UP` : rel > 0 ? `${rel} DOWN` : "0"}
                         </span>
-                        <button type="button" onClick={() => patch({ [k]: ant[k] + 1 })} className="h-9 w-9 rounded-lg text-lg font-black hover:bg-ink/5" aria-label={`${k} plus one`}>+</button>
+                        <button type="button" onClick={() => patch({ [k]: ant[k] + 1 })} className="grid h-9 w-9 place-items-center rounded-lg text-ink/70 hover:bg-white/5" aria-label={`${k} plus one`}>
+                          <Icon.Plus size={16} />
+                        </button>
                       </div>
                     );
                   })}
                 </div>
-                <button type="button" onClick={() => { onPlace(sel); onClose(); }} className="mt-2 h-11 w-full rounded-xl font-bold text-cyan ring-1 ring-cyan/40">
-                  Tap the grid to place ant {sel + 1}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onPlace(sel);
+                    onClose();
+                  }}
+                  className={btn("ghost", "md", "mt-1.5 w-full")}
+                >
+                  <Icon.Target size={16} /> Tap the grid to place ant {sel + 1}
                 </button>
               </Section>
 
               <Section title="Colour">
                 <div className="flex gap-2">
                   {ANT_COLORS.map((c, i) => (
-                    <button key={c} type="button" onClick={() => patch({ color: i })} className={`h-9 w-9 rounded-full transition ${ant.color === i ? "ring-2 ring-ink ring-offset-2 ring-offset-navy-900" : ""}`} style={{ background: c }} aria-label={`Colour ${i + 1}`} />
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => patch({ color: i })}
+                      className={`h-9 w-9 rounded-full transition ${ant.color === i ? "ring-2 ring-ink ring-offset-2 ring-offset-navy-850" : "opacity-80 hover:opacity-100"}`}
+                      style={{ background: c, boxShadow: `0 0 12px ${c}55` }}
+                      aria-label={`Colour ${i + 1}`}
+                    />
                   ))}
                 </div>
               </Section>
 
               {setup.ants.length > 1 && (
-                <button type="button" onClick={removeAnt} className="h-11 w-full rounded-xl font-bold text-coral ring-1 ring-coral/40">
+                <button type="button" onClick={removeAnt} className={btn("ghost", "md", "w-full border-coral/30 text-coral hover:border-coral/60 hover:text-coral")}>
                   Remove ant {sel + 1}
                 </button>
               )}
@@ -260,10 +314,10 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
       {tab === "lab" && (
         <Locked label="The lab tools">
           <Section title="Edges">
-            <button type="button" onClick={() => onChange({ ...setup, wrap: !setup.wrap })} className={`flex h-11 w-full items-center justify-between px-3 ${box}`}>
+            <button type="button" onClick={() => onChange({ ...setup, wrap: !setup.wrap })} className={`flex h-12 w-full items-center justify-between px-3 ${box}`} role="switch" aria-checked={setup.wrap}>
               <span>Wrap around (the grid is a donut)</span>
-              <span className={`h-6 w-11 rounded-full p-0.5 transition ${setup.wrap ? "bg-mint" : "bg-line"}`}>
-                <span className={`block h-5 w-5 rounded-full bg-ink transition ${setup.wrap ? "translate-x-5" : ""}`} />
+              <span className={`h-6 w-10 rounded-full p-0.5 transition ${setup.wrap ? "bg-gold" : "bg-white/10"}`}>
+                <span className={`block h-5 w-5 rounded-full bg-white transition ${setup.wrap ? "translate-x-4" : ""}`} />
               </span>
             </button>
           </Section>
@@ -278,55 +332,61 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
                 onClose();
               }}
             >
-              <input value={jump} onChange={(e) => setJump(e.target.value)} inputMode="numeric" className={`num min-w-0 flex-1 px-3 py-2.5 outline-none ${box}`} aria-label="Step" />
-              <button type="submit" className="rounded-xl bg-ink px-4 font-black text-navy-950">Go</button>
+              <input value={jump} onChange={(e) => setJump(e.target.value)} inputMode="numeric" className={`min-w-0 flex-1 px-3 py-2.5 font-mono outline-none focus:border-gold/60 ${box}`} aria-label="Step" />
+              <button type="submit" className={btn("primary", "md")}>
+                Go
+              </button>
             </form>
           </Section>
 
           <Section title="Find setups that come home">
-            <p className="mb-2 text-xs text-mist">
+            <p className="mb-2 text-[12px] leading-snug text-ink/45">
               Keeps ant 1 still and tries the last ant on every square nearby, facing every way. A setup comes home when the grid is empty and every ant is back where it started.
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               <label className={`flex items-center justify-between px-3 py-2 ${box}`}>
-                <span className="text-mist">Range</span>
-                <select value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="bg-transparent font-bold outline-none">
+                <span className="font-mono text-[10px] tracking-[0.1em] text-ink/45">RANGE</span>
+                <select value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="bg-transparent font-mono outline-none">
                   {[3, 5, 8, 10, 15].map((r) => (
-                    <option key={r} value={r} className="bg-navy-900">±{r}</option>
+                    <option key={r} value={r} className="bg-navy-900">
+                      ±{r}
+                    </option>
                   ))}
                 </select>
               </label>
               <label className={`flex items-center justify-between px-3 py-2 ${box}`}>
-                <span className="text-mist">Steps</span>
-                <select value={max} onChange={(e) => setMax(Number(e.target.value))} className="bg-transparent font-bold outline-none">
+                <span className="font-mono text-[10px] tracking-[0.1em] text-ink/45">STEPS</span>
+                <select value={max} onChange={(e) => setMax(Number(e.target.value))} className="bg-transparent font-mono outline-none">
                   {[50000, 100000, 300000, 1000000].map((m) => (
-                    <option key={m} value={m} className="bg-navy-900">{m >= 1e6 ? "1M" : `${m / 1000}K`}</option>
+                    <option key={m} value={m} className="bg-navy-900">
+                      {m >= 1e6 ? "1M" : `${m / 1000}K`}
+                    </option>
                   ))}
                 </select>
               </label>
             </div>
-            <button type="button" onClick={searching ? stopSearch : runSearch} className={`mt-2 h-11 w-full rounded-xl font-black ${searching ? "text-coral ring-1 ring-coral/40" : "bg-gold text-navy-950"}`}>
+            <button type="button" onClick={searching ? stopSearch : runSearch} className={searching ? btn("ghost", "md", "mt-1.5 w-full text-coral") : btn("primary", "md", "mt-1.5 w-full")}>
               {searching ? "Stop" : `Try ${fmt((2 * radius + 1) ** 2 * 4)} setups`}
             </button>
             {prog && (
               <div className="mt-3">
-                <div className="h-2 overflow-hidden rounded-full bg-line">
-                  <div className="h-full rounded-full bg-gradient-to-r from-gold to-mint transition-[width]" style={{ width: `${(100 * prog.done) / Math.max(1, prog.total)}%` }} />
+                <div className="h-1 overflow-hidden rounded-full bg-white/[0.07]">
+                  <div className="h-full rounded-full bg-gold transition-[width]" style={{ width: `${(100 * prog.done) / Math.max(1, prog.total)}%` }} />
                 </div>
-                <p className="num mt-1.5 text-xs text-mist">
-                  {fmt(prog.done)} tried · <span className="font-bold text-mint">{fmt(hits.length)} come home</span>
+                <p className="mt-1.5 font-mono text-[11px] text-ink/45">
+                  {fmt(prog.done)} TRIED · <span className="text-mint">{fmt(hits.length)} COME HOME</span>
                 </p>
               </div>
             )}
             {hits.length > 0 && (
-              <ul className="mt-2 grid max-h-64 gap-1.5 overflow-y-auto pr-1">
+              <ul className="mt-2 grid max-h-64 gap-1 overflow-y-auto pr-1">
                 {hits.map((h) => (
                   <li key={`${h.dx},${h.dy},${h.d}`}>
-                    <button type="button" onClick={() => loadHit(h)} className={`flex w-full items-center justify-between px-3 py-2 text-left ${box} hover:ring-mint/50`}>
-                      <span className="num">
-                        {h.dx >= 0 ? `${h.dx} right` : `${-h.dx} left`}, {h.dy >= 0 ? `${h.dy} down` : `${-h.dy} up`} {ARROWS[h.d]}
+                    <button type="button" onClick={() => loadHit(h)} className={`flex w-full items-center justify-between px-3 py-2 text-left transition hover:border-mint/40 ${box}`}>
+                      <span className="flex items-center gap-2 font-mono text-[12px] text-ink/70">
+                        {h.dx >= 0 ? `${h.dx} RIGHT` : `${-h.dx} LEFT`}, {h.dy >= 0 ? `${h.dy} DOWN` : `${-h.dy} UP`} <Arrow d={h.d} />
                       </span>
-                      <span className="num font-bold text-mint">{fmt(h.period)}</span>
+                      <span className="font-mono text-[12px] text-mint">{fmt(h.period)}</span>
                     </button>
                   </li>
                 ))}
@@ -335,8 +395,8 @@ export default function SettingsPanel({ setup, onChange, onPlace, onJump, onShar
           </Section>
 
           <Section title="Share">
-            <button type="button" onClick={onShare} className={`h-11 w-full font-bold ${box}`}>
-              Copy a link to this setup
+            <button type="button" onClick={onShare} className={btn("ghost", "md", "w-full")}>
+              <Icon.Share size={16} /> Copy a link to this setup
             </button>
           </Section>
         </Locked>

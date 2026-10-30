@@ -16,7 +16,9 @@ export default function LiveAnts({ className = "" }: { className?: string }) {
 
   return (
     <div className={`relative overflow-hidden bg-[#05060B] ${className}`}>
-      <AntsPreview className="absolute inset-0" onStep={onStep} warm={2600} />
+      <div className="absolute inset-0">
+        <AntsPreview className="h-full w-full" onStep={onStep} warm={2600} />
+      </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-navy-900/90 to-transparent lg:hidden" />
       <div className="absolute left-3 top-3 flex gap-1.5">
         <Readout label="STEP" value={fmt(step)} />
