@@ -7,7 +7,7 @@ The site already works without any of this: each video's setup is free, everythi
 1. supabase.com → New project. Pick a region close to the US. Save the database password somewhere safe.
 2. SQL Editor → paste all of `supabase/migrations/0001_init.sql` → Run.
 3. Authentication → Sign In / Providers: turn **Email off** (and every other provider), turn **Google on** with the client ID and secret from step 2.
-4. Authentication → URL Configuration: Site URL `https://<your-app>.vercel.app`, Redirect URLs `https://<your-app>.vercel.app/auth/callback` and `http://localhost:3210/auth/callback`.
+4. Authentication → URL Configuration: Site URL `https://<your-app>.vercel.app`, Redirect URLs `https://<your-app>.vercel.app/**` and `http://localhost:3210/auth/callback`. The Vercel integration can overwrite the Site URL with the team address (`<app>-<team>.vercel.app`), which sits behind Vercel's login; the `/**` entry keeps sign-in on the public address working anyway.
 5. Easiest: Vercel → Integrations → Supabase → link this project; it fills the Supabase variables from step 4 for you. By hand: Project Settings → API keys, copy the Project URL, the publishable key and the secret key.
 
 ## 2. Google sign-in
