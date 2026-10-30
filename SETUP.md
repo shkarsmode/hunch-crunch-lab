@@ -8,7 +8,7 @@ The site already works without any of this: each video's setup is free, everythi
 2. SQL Editor → paste all of `supabase/migrations/0001_init.sql` → Run.
 3. Authentication → Sign In / Providers: turn **Email off** (and every other provider), turn **Google on** with the client ID and secret from step 2.
 4. Authentication → URL Configuration: Site URL `https://<your-app>.vercel.app`, Redirect URLs `https://<your-app>.vercel.app/auth/callback` and `http://localhost:3210/auth/callback`.
-5. Project Settings → API keys: copy the Project URL, the anon (publishable) key and the service_role (secret) key.
+5. Easiest: Vercel → Integrations → Supabase → link this project; it fills the Supabase variables from step 4 for you. By hand: Project Settings → API keys, copy the Project URL, the publishable key and the secret key.
 
 ## 2. Google sign-in
 
@@ -30,8 +30,8 @@ Project → Settings → Environment Variables (Production), then Deployments �
 | Name | Value |
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (publishable) key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service_role key (secret) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key (`sb_publishable_…`) |
+| `SUPABASE_SECRET_KEY` | Supabase secret key (`sb_secret_…`, secret) |
 | `ADMIN_EMAILS` | your Google email (comma-separated for more) |
 | `NEXT_PUBLIC_PATREON_URL` | `https://www.patreon.com/<your page>` |
 | `PATREON_CLIENT_ID` | from 3.2 |
@@ -40,7 +40,7 @@ Project → Settings → Environment Variables (Production), then Deployments �
 | `PATREON_WEBHOOK_SECRET` | from 3.4 (secret) |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | optional, shown on Privacy and Terms |
 
-Patreon unlocks switch on only when the four `PATREON_*` values are set.
+Patreon unlocks switch on only when the four `PATREON_*` values are set. The legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` still work as a fallback until Supabase retires them at the end of 2026.
 
 ## Money and abuse protection
 
@@ -51,12 +51,14 @@ Already in the code:
 - Secrets live only in Vercel environment variables; the service key never reaches the browser.
 - Security headers: Content-Security-Policy, no framing, HSTS, nosniff, strict referrer, permissions policy.
 - Patreon sign-in uses a one-time state cookie, and webhooks are checked with the Patreon signature.
+- A daily Vercel cron calls `/api/health`. Its few real queries keep the free Supabase project from going a week without database activity, and its answer (`db`, `auth`) shows both keys still work.
 
 On your side:
 - Free plans can't bill you. When a free limit is hit, Vercel and Supabase pause instead of charging. If you ever upgrade: Vercel → Settings → Billing → Spend Management (set a limit and pause at it); Supabase → Billing → keep the Spend Cap on.
 - Under attack: Vercel → Firewall → Attack Challenge Mode (free, one click).
 - Vercel Hobby is for non-commercial use, and paid access counts as commercial. Before you set the Patreon variables, move the project to Pro ($20/month, set a spend limit) or another host. Donations without paid unlocks are fine on Hobby.
-- A Supabase free project pauses after a week with no requests. Regular visits keep it awake; if it pauses, restore it in the dashboard.
+- A Supabase free project pauses after a week without database activity, and Supabase emails a warning about a week before. The daily cron and normal visits keep it awake. If it ever pauses: Supabase dashboard → the project → Resume project (possible for up to a year). A resumed project comes back without the legacy keys, which is why the site uses the new ones.
+- The free plan has no automatic backups. Little is at stake: profiles come back on the next sign-in and supporter months are recounted from Patreon; ideas, visit stats, founder numbers and manual grants would be lost. For a copy, run `supabase db dump` now and then.
 
 ## Local development
 
