@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { Icon } from "@/components/ui/icons";
+import { btn } from "@/components/ui/kit";
 import type { Side } from "./engine";
 import { faceOf, haptic, spin } from "./fx";
-import { ResetIcon, UndoIcon } from "./Parts";
-import { EXTRA, SEMI, V } from "./scene";
-
-const ghost = "flex h-11 items-center gap-2 rounded-full bg-[#0C1430]/80 px-4 text-sm ring-1 ring-[#A9B6D3]/30 transition active:scale-95 disabled:opacity-35 enabled:hover:brightness-125";
+import { UndoIcon } from "./Parts";
+import { EXTRA, V } from "./scene";
 
 type Props = {
   paused: boolean;
@@ -54,14 +54,9 @@ function CoinButton({
           </span>
         </button>
       </div>
-      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em]" style={{ ...SEMI, color: V.muted }}>
+      <div className="flex h-5 items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink/50">
         {heads ? "Heads" : "Tails"}
-        <kbd
-          className="hidden rounded-md px-1.5 py-0.5 font-sans text-[10px] tracking-normal [@media(hover:hover)]:inline-block"
-          style={{ ...SEMI, color: V.muted, border: "1px solid rgb(141 154 184 / 0.4)" }}
-        >
-          {side}
-        </kbd>
+        <kbd className="hidden rounded border border-hair-strong px-1.5 font-mono text-[10px] leading-4 tracking-normal text-ink/70 [@media(hover:hover)]:inline-block">{side}</kbd>
       </div>
     </div>
   );
@@ -133,13 +128,13 @@ export default function CoinPad({ paused, canUndo, onFlip, onUndo, onClear }: Pr
           }}
         />
       </div>
-      <div className="mt-3 flex items-center justify-center gap-2">
-        <button type="button" onClick={undo} disabled={!canUndo} className={ghost} style={{ ...SEMI, color: V.muted }}>
-          <UndoIcon />
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button type="button" onClick={undo} disabled={!canUndo} className={btn("ghost", "md")}>
+          <UndoIcon size={17} />
           Undo
         </button>
-        <button type="button" onClick={onClear} disabled={!canUndo} className={ghost} style={{ ...SEMI, color: V.muted }}>
-          <ResetIcon />
+        <button type="button" onClick={onClear} disabled={!canUndo} className={btn("ghost", "md")}>
+          <Icon.Reset size={17} />
           Start over
         </button>
       </div>

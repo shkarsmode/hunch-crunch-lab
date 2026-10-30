@@ -307,7 +307,7 @@ export default function SupportClient() {
                 {f.q}
                 <Icon.Plus size={16} className="shrink-0 text-ink/40 transition duration-200 group-open:rotate-45" />
               </summary>
-              <p className="-mt-1 pb-4 text-[14px] leading-relaxed text-ink/55">{f.a}</p>
+              <p className="selectable -mt-1 pb-4 text-[14px] leading-relaxed text-ink/55">{f.a}</p>
             </details>
           ))}
         </div>

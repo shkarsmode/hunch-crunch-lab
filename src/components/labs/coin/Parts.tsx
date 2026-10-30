@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { EXTRA, SEMI, V, u } from "./scene";
 
 export function ChartSkeleton() {
@@ -33,71 +34,40 @@ export function ChartSkeleton() {
   );
 }
 
-type IconProps = { className?: string };
-
-const base = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true } as const;
-
-export function TuneIcon({ className = "h-4 w-4" }: IconProps) {
+/* The docked control bar: a full-bleed hairline panel stuck to the bottom of the scroll, content kept to max-w-md. */
+export function Dock({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <svg {...base} className={className}>
-      <path d="M4 7h8M18 7h2M4 17h2M12 17h8" />
-      <circle cx="15" cy="7" r="2.4" />
-      <circle cx="9" cy="17" r="2.4" />
+    <div className={`sticky bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 ${className}`}>
+      <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2 border-t border-hair bg-navy-900" />
+      <div className="relative mx-auto max-w-md">{children}</div>
+    </div>
+  );
+}
+
+type IconProps = { size?: number; className?: string };
+
+function Svg({ size = 20, className, children }: IconProps & { children: ReactNode }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      {children}
     </svg>
   );
 }
 
-export function UndoIcon({ className = "h-4 w-4" }: IconProps) {
+export function UndoIcon(p: IconProps) {
   return (
-    <svg {...base} className={className}>
-      <path d="M9 14 4 9l5-5" />
-      <path d="M4 9h9a6 6 0 0 1 0 12h-3" />
-    </svg>
+    <Svg {...p}>
+      <path d="M9 13.5 4.5 9 9 4.5" />
+      <path d="M4.5 9h9.25a5.25 5.25 0 0 1 0 10.5H10" />
+    </Svg>
   );
 }
 
-export function ResetIcon({ className = "h-4 w-4" }: IconProps) {
+export function CoinIcon(p: IconProps) {
   return (
-    <svg {...base} className={className}>
-      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-      <path d="M3 3v5h5" />
-    </svg>
-  );
-}
-
-export function CheckIcon({ className = "h-4 w-4" }: IconProps) {
-  return (
-    <svg {...base} className={className}>
-      <path d="m5 12.5 4.5 4.5L19 7.5" />
-    </svg>
-  );
-}
-
-export function CopyIcon({ className = "h-4 w-4" }: IconProps) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="9" y="9" width="11" height="11" rx="3" />
-      <path d="M5 15V6a2 2 0 0 1 2-2h8" />
-    </svg>
-  );
-}
-
-export function CoinIcon({ className = "h-4 w-4" }: IconProps) {
-  return (
-    <svg {...base} className={className}>
+    <Svg {...p}>
       <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 7.5v9M9.5 10c0-1.1 1.1-1.8 2.5-1.8s2.5.7 2.5 1.8-1.1 1.6-2.5 1.8-2.5.7-2.5 1.8 1.1 1.8 2.5 1.8 2.5-.7 2.5-1.8" strokeWidth="1.6" />
-    </svg>
-  );
-}
-
-export function RepeatIcon({ className = "h-4 w-4" }: IconProps) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M17 3l4 4-4 4" />
-      <path d="M3 11V9a2 2 0 0 1 2-2h16" />
-      <path d="M7 21l-4-4 4-4" />
-      <path d="M21 13v2a2 2 0 0 1-2 2H3" />
-    </svg>
+      <path d="M9.75 8.5v7M14.25 8.5v7M9.75 12h4.5" />
+    </Svg>
   );
 }

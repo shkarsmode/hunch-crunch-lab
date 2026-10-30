@@ -373,7 +373,7 @@ export default function AntsLab() {
   const speeds = ["auto", ...FREE_SPEEDS, ...FULL_SPEEDS] as Speed[];
   const speedIndex = Math.max(0, speeds.indexOf(speed));
   const overlay = "bottom-[calc(8.25rem+env(safe-area-inset-bottom))]";
-  const panel = "rounded-2xl border border-hair bg-navy-850/95 shadow-[0_24px_60px_-20px_rgb(0_0_0/0.9)] backdrop-blur-xl";
+  const panel = "rounded-2xl border border-hair bg-navy-850 shadow-[0_24px_60px_-20px_rgb(0_0_0/0.9)]";
 
   return (
     <LabShell
@@ -385,7 +385,9 @@ export default function AntsLab() {
       right={
         <button
           type="button"
-          onClick={() => setInfo(true)}
+          onClick={() => setInfo((v) => !v)}
+          data-sheet-trigger
+          aria-expanded={info}
           className="grid h-10 w-10 place-items-center rounded-xl border border-hair-strong font-mono text-[14px] text-ink/70 transition hover:text-ink active:scale-95"
           aria-label="How it works"
         >
@@ -447,7 +449,7 @@ export default function AntsLab() {
             viewRef.current?.follow();
             setFollow(true);
           }}
-          className="enter absolute right-3 top-3 flex h-9 items-center gap-1.5 rounded-lg border border-hair-strong bg-black/60 px-3 font-mono text-[10px] tracking-[0.1em] text-ink/80 backdrop-blur-md transition active:scale-95"
+          className="enter absolute right-3 top-3 flex h-9 items-center gap-1.5 rounded-lg border border-hair-strong bg-black/80 px-3 font-mono text-[10px] tracking-[0.1em] text-ink/80 transition active:scale-95"
         >
           <Icon.Target size={15} /> FOLLOW
         </button>
@@ -578,7 +580,7 @@ export default function AntsLab() {
         </div>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 z-30 border-t border-hair bg-navy-900/90 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl">
+      <div className="absolute inset-x-0 bottom-0 z-30 border-t border-hair bg-navy-900 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5">
         <div className="mx-auto max-w-md">
           <div className="relative grid h-10 grid-cols-7 rounded-xl border border-hair bg-white/[0.03] p-1" role="radiogroup" aria-label="Speed, steps a second">
             <div
@@ -627,7 +629,9 @@ export default function AntsLab() {
             </button>
             <button
               type="button"
-              onClick={() => setSheet(true)}
+              onClick={() => setSheet((v) => !v)}
+              data-sheet-trigger
+              aria-expanded={sheet}
               className="relative flex h-12 shrink-0 items-center gap-1.5 rounded-xl border border-hair-strong px-3 text-[14px] font-medium text-ink/80 transition hover:text-ink active:scale-95"
               aria-label="Ants and rules"
             >

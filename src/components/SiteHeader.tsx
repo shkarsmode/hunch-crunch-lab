@@ -41,7 +41,7 @@ export default function SiteHeader() {
   if (path.startsWith("/lab/") || path === "/design") return null;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-hair bg-navy-900/80 backdrop-blur-xl" ref={menuRef}>
+    <header className="sticky top-0 z-40 border-b border-hair bg-navy-900/95 md:bg-navy-900/80 md:backdrop-blur-xl" ref={menuRef}>
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:px-6">
         <Link href="/" className="group flex items-center gap-2.5" aria-label="Hunch Crunch Lab home">
           <Crunchy size={26} shadow={false} className="transition duration-300 group-hover:-rotate-6 group-active:animate-crunch" />
@@ -79,7 +79,7 @@ export default function SiteHeader() {
                 )}
               </button>
               {account && (
-                <div className="enter absolute right-0 top-11 w-60 overflow-hidden rounded-2xl border border-hair bg-navy-850/95 text-sm shadow-[0_24px_60px_-20px_rgb(0_0_0/0.9)] backdrop-blur-xl" style={{ animationDuration: "0.22s" }}>
+                <div className="enter absolute right-0 top-11 w-60 overflow-hidden rounded-2xl border border-hair bg-navy-850 text-sm shadow-[0_24px_60px_-20px_rgb(0_0_0/0.9)]" style={{ animationDuration: "0.22s" }}>
                   <div className="border-b border-hair px-4 py-3">
                     <p className="truncate font-semibold">{user.name}</p>
                     <p className="mt-0.5 truncate font-mono text-[10px] tracking-[0.08em] text-ink/45">
@@ -123,7 +123,7 @@ export default function SiteHeader() {
       </div>
 
       {menu && (
-        <nav className="enter border-t border-hair bg-navy-900/95 px-4 pb-4 pt-1 backdrop-blur-xl sm:hidden" style={{ animationDuration: "0.22s" }}>
+        <nav className="enter border-t border-hair bg-navy-900 px-4 pb-4 pt-1 sm:hidden" style={{ animationDuration: "0.22s" }}>
           {NAV.map((n, i) => (
             <Link key={n.href} href={n.href} onClick={() => setMenu(false)} className="flex items-center gap-4 border-b border-hair py-3.5 text-[16px] font-medium">
               <span className="font-mono text-[11px] text-ink/30">{String(i + 1).padStart(2, "0")}</span>

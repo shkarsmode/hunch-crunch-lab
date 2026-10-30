@@ -1,18 +1,32 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Icon } from "@/components/ui/icons";
 
+// A bottom sheet on phones, a side panel on desktop. A press anywhere outside closes it,
+// and on desktop that press still reaches what it was aimed at (Play works in one click).
+// Buttons that open the sheet carry data-sheet-trigger so they can toggle it.
 export default function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+  const panel = useRef<HTMLElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (!t || panel.current?.contains(t) || t.closest("[aria-modal='true'], [data-sheet-trigger]")) return;
+      onClose();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onDown, true);
+    };
   }, [open, onClose]);
 
   return (
-    <div className={`fixed inset-0 z-40 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
+    <div className={`fixed inset-0 z-40 lg:pointer-events-none ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
       <button
         type="button"
         tabIndex={open ? 0 : -1}
@@ -21,10 +35,11 @@ export default function Sheet({ open, onClose, title, children }: { open: boolea
         className={`absolute inset-0 bg-black/60 transition-opacity duration-300 lg:hidden ${open ? "opacity-100" : "opacity-0"}`}
       />
       <aside
+        ref={panel}
         role="dialog"
         aria-label={title}
         inert={!open}
-        className={`absolute inset-x-0 bottom-0 max-h-[78dvh] border border-hair bg-navy-850 overflow-y-auto rounded-t-[22px] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl transition-transform duration-300 ease-out no-scrollbar lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-18 lg:max-h-none lg:w-[380px] lg:rounded-[22px] ${
+        className={`absolute inset-x-0 bottom-0 max-h-[78dvh] overflow-y-auto rounded-t-[22px] border border-hair bg-navy-850 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl transition-transform duration-300 ease-out no-scrollbar lg:pointer-events-auto lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-18 lg:max-h-none lg:w-[380px] lg:rounded-[22px] ${
           open ? "translate-y-0 lg:translate-x-0" : "translate-y-full lg:translate-x-[110%] lg:translate-y-0"
         }`}
       >

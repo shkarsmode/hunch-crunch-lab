@@ -31,7 +31,7 @@ export default function UpsellSheet({ reason, onClose }: { reason: string; onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label="Unlock the full lab">
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/70 backdrop-blur-[3px] animate-[pop_.2s_ease-out_both]" />
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/75 animate-[pop_.2s_ease-out_both]" />
       <div className="sheet-up relative w-full max-w-md rounded-t-[22px] border border-hair bg-navy-850 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-30px_80px_-20px_rgb(0_0_0/0.9)] sm:rounded-[22px]">
         <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-white/15 sm:hidden" />
         <div className="flex items-start gap-3.5">

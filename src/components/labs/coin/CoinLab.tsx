@@ -4,6 +4,8 @@ import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState }
 import type { CrunchyMood } from "@/components/Crunchy";
 import Sheet from "@/components/Sheet";
 import { useAccess } from "@/components/access/AccessProvider";
+import { Icon } from "@/components/ui/icons";
+import { Tag } from "@/components/ui/kit";
 import { COINS, FREE, analyzeAsync, fmt, levelInfo, realCoin, trailingRun } from "./engine";
 import type { FlipCount, Level, Metric, Side } from "./engine";
 import { hintCaption, shareLine, words as verdictWords } from "./copy";
@@ -12,16 +14,14 @@ import CoinPad from "./CoinPad";
 import { cellRect } from "./FlipGrid";
 import FlipPanel from "./FlipPanel";
 import { SCAN_MS, copyText, toss } from "./fx";
-import { Actions, ChartCard, RealPanel } from "./ResultPanel";
+import { Actions, ChartCard, NextButton, RealPanel } from "./ResultPanel";
 import SettingsPanel from "./SettingsPanel";
-import { ChartSkeleton, TuneIcon } from "./Parts";
+import { ChartSkeleton, Dock } from "./Parts";
 import { Mascot, QMark, SEMI, SceneBg, UNIT, V, u } from "./scene";
 import { initial, reducer } from "./state";
 import { useBest } from "./useBest";
 
 type Copy = { state: "idle" | "ok" | "fail"; text: string };
-
-const chip = "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ring-1";
 
 export default function CoinLab() {
   const { unlocked } = useAccess();
@@ -146,6 +146,7 @@ export default function CoinLab() {
   const mark = result && j && activeChart === "run" ? { start: j.runStart, len: j.ru.value } : null;
   const panelMode = typing ? "typing" : crunching ? (a ? "scan" : "wait") : "done";
   const panelValue = j ? (activeChart === "switches" ? j.sw.value : j.ru.value) : 0;
+  const docked = typing || (result && !!j);
 
   return (
     <>
@@ -153,33 +154,41 @@ export default function CoinLab() {
         <div className="relative h-full" style={UNIT}>
           <SceneBg />
           <div className={`relative h-full overflow-y-auto overscroll-contain no-scrollbar transition-[padding] duration-300 ${sheet ? "lg:pr-[396px]" : ""}`}>
-            <div className="mx-auto flex min-h-full flex-col" style={{ width: u(1080), rowGap: u(52), paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
-              <div className="flex h-12 shrink-0 items-center justify-between gap-2" style={{ padding: `0 ${u(40)}` }}>
-                <div className="min-w-0 text-sm" style={SEMI}>
+            <div className="mx-auto flex min-h-full flex-col" style={{ width: u(1080), rowGap: u(52), paddingBottom: docked ? 0 : "max(1rem, env(safe-area-inset-bottom))" }}>
+              <div className="shrink-0 px-3">
+                <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-2">
                   {unlocked ? (
-                    <span className={chip} style={{ color: V.muted, background: "rgb(12 20 48 / 0.9)", ["--tw-ring-color" as string]: "rgb(169 182 211 / 0.3)" }}>
-                      Streak <b className="num" style={{ color: V.white }}>{s.streak}</b>
-                      <span style={{ color: V.axis }}>·</span>
-                      Best <b className="num" style={{ color: V.white }}>{Math.max(best, s.streak)}</b>
-                    </span>
+                    <p className="flex min-w-0 items-center gap-3 font-mono text-[10px] tracking-[0.12em] text-ink/45">
+                      <span className="flex items-baseline gap-1.5">
+                        STREAK <span className="num text-[14px] text-ink">{s.streak}</span>
+                      </span>
+                      <span aria-hidden className="h-3 w-px bg-hair-strong" />
+                      <span className="flex items-baseline gap-1.5">
+                        BEST <span className="num text-[14px] text-ink">{Math.max(best, s.streak)}</span>
+                      </span>
+                    </p>
                   ) : (
-                    <span className={chip} style={{ color: V.gold, background: "rgb(255 201 74 / 0.1)", ["--tw-ring-color" as string]: "rgb(255 201 74 / 0.28)" }}>
+                    <Tag tone="free" className="min-w-0 truncate">
                       Free round
-                    </span>
+                    </Tag>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setSheet((v) => !v)}
+                    data-sheet-trigger
+                    aria-expanded={sheet}
+                    aria-label="Detector settings"
+                    className="relative flex h-11 shrink-0 items-center gap-2 rounded-xl border border-hair-strong bg-navy-900/85 px-3 text-[14px] font-medium text-ink/80 transition hover:text-ink active:scale-95"
+                  >
+                    <Icon.Sliders size={18} />
+                    <span className="num">{s.n} flips</span>
+                    <span aria-hidden className="text-ink/30 max-[359px]:hidden">
+                      ·
+                    </span>
+                    <span className="max-[359px]:hidden">{levelInfo(s.level).label}</span>
+                    {!unlocked && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-gold ring-2 ring-navy-900" />}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSheet(true)}
-                  aria-label="Detector settings"
-                  className="flex h-11 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm ring-1 transition hover:brightness-125 active:scale-95"
-                  style={{ ...SEMI, color: V.muted, background: "rgb(12 20 48 / 0.9)", ["--tw-ring-color" as string]: "rgb(169 182 211 / 0.3)" }}
-                >
-                  <TuneIcon />
-                  <span className="num">{s.n} flips</span>
-                  <span className="max-[359px]:hidden" style={{ color: V.axis }}>·</span>
-                  <span className="max-[359px]:hidden">{levelInfo(s.level).label}</span>
-                </button>
               </div>
 
               <div className="relative" style={{ paddingBottom: u(8) }}>
@@ -204,16 +213,9 @@ export default function CoinLab() {
                     />
                     <Mascot width={175} mood={mood} look={look} />
                   </div>
-                  <div className="sticky bottom-0 mt-0 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-3">
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute inset-y-0 left-1/2 w-screen -translate-x-1/2"
-                      style={{ background: "linear-gradient(to top, rgb(12 18 38 / 0.96) 70%, rgb(12 18 38 / 0))" }}
-                    />
-                    <div className="relative">
-                      <CoinPad paused={sheet} canUndo={s.flips.length > 0} onFlip={onFlip} onUndo={onUndo} onClear={onClear} />
-                    </div>
-                  </div>
+                  <Dock className="sheet-up">
+                    <CoinPad paused={sheet} canUndo={s.flips.length > 0} onFlip={onFlip} onUndo={onUndo} onClear={onClear} />
+                  </Dock>
                 </>
               ) : (
                 <>
@@ -275,10 +277,13 @@ export default function CoinLab() {
                       Twenty flips is short, so fakes can hide. The video used 100.
                     </p>
                   )}
-                  <Actions hasReal={!!s.real} copy={copy} onNext={next} onReal={playReal} onShare={share} />
+                  <Actions hasReal={!!s.real} copy={copy} onReal={playReal} onShare={share} />
                   <p className="text-balance text-center" style={{ ...SEMI, fontSize: u(34), lineHeight: 1.35, color: V.muted, padding: `0 ${u(100)}` }}>
                     From the video: the hand-typed row switched 77 times in 99. Of 10,000 simulated real coins (100 flips each), the most was 67.
                   </p>
+                  <Dock className="sheet-up mt-auto">
+                    <NextButton onNext={next} />
+                  </Dock>
                 </>
               )}
             </div>

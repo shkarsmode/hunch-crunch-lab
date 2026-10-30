@@ -17,34 +17,44 @@ function Segmented<T extends string | number>({
   onChange: (v: T) => void;
   reserve?: boolean;
 }) {
+  const index = Math.max(0, options.findIndex((o) => o.id === value));
   return (
     <div
       role="radiogroup"
       aria-label={label}
-      className={`grid auto-cols-fr grid-flow-col gap-1.5 rounded-2xl bg-navy-900/60 p-1 ring-1 ring-edge/20 ${reserve ? "pr-[4.25rem]" : ""}`}
+      className={`relative grid auto-cols-fr grid-flow-col rounded-xl border border-hair bg-white/[0.03] p-1 ${reserve ? "pr-[4.25rem]" : ""}`}
     >
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          role="radio"
-          aria-checked={o.id === value}
-          onClick={() => onChange(o.id)}
-          className={`h-11 rounded-xl text-sm font-bold transition active:scale-95 ${o.id === value ? "bg-gold text-navy-950" : "text-mist hover:text-ink"}`}
-        >
-          {o.text}
-        </button>
-      ))}
+      <div
+        aria-hidden
+        className="absolute inset-y-1 left-1 rounded-lg bg-white/[0.12] transition-transform duration-200 ease-out"
+        style={{ width: `calc((100% - ${reserve ? "4px - 4.25rem" : "8px"}) / ${options.length})`, transform: `translateX(${index * 100}%)` }}
+      />
+      {options.map((o) => {
+        const on = o.id === value;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(o.id)}
+            className={`relative h-11 font-mono text-[12px] uppercase tracking-[0.08em] transition ${on ? "text-ink" : "text-ink/45 hover:text-ink/80"}`}
+          >
+            {o.text}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-const heading = "mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-mist";
+const heading = "mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink/40";
+const hint = "mt-2 text-[12px] leading-snug text-ink/45";
 
 export default function SettingsPanel({ n, level, open, onPick }: { n: FlipCount; level: Level; open: boolean; onPick: (n: FlipCount, level: Level) => void }) {
   const { unlocked } = useAccess();
   return (
-    <div className="space-y-5 pb-2" inert={!open}>
+    <div className="space-y-5 pb-2 text-[14px]" inert={!open}>
       <section>
         <h3 className={heading}>Flips per round</h3>
         <Locked label="Any number of flips">
@@ -56,7 +66,7 @@ export default function SettingsPanel({ n, level, open, onPick }: { n: FlipCount
             reserve={!unlocked}
           />
         </Locked>
-        <p className="mt-2 text-xs leading-snug text-mist">More flips give the detector more to go on. The video used 100.</p>
+        <p className={hint}>More flips give the detector more to go on. The video used 100.</p>
       </section>
       <section>
         <h3 className={heading}>Detector strictness</h3>
@@ -69,9 +79,9 @@ export default function SettingsPanel({ n, level, open, onPick }: { n: FlipCount
             reserve={!unlocked}
           />
         </Locked>
-        <p className="mt-2 text-xs leading-snug text-mist">{levelInfo(level).blurb}</p>
+        <p className={hint}>{levelInfo(level).blurb}</p>
       </section>
-      <p className="rounded-2xl bg-navy-900/50 p-3 text-xs leading-snug text-mist ring-1 ring-edge/15">
+      <p className="rounded-xl border border-hair bg-white/[0.025] p-3 text-[12px] leading-snug text-ink/50">
         Each round flips {fmt(COINS)} real coins in your browser, with as many flips as you typed. The detector looks at two things: how often a sequence switches sides, and its longest streak. Changing a setting starts a new round.
       </p>
     </div>

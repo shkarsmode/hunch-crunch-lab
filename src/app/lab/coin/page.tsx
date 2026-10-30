@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function CoinPage() {
   return (
-    <LabShell title={title} emoji="🪙" video="ohw7yj6AZ_E" grid={false}>
+    <LabShell title={title} tag="E005 · LIVE" video="ohw7yj6AZ_E" grid={false}>
       <CoinLab />
     </LabShell>
   );

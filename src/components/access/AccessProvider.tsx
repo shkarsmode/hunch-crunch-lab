@@ -130,7 +130,7 @@ export function Locked({ children, label, className = "", inline = false }: { ch
         aria-label={label ? `Unlock: ${label}` : "Unlock the full lab"}
         className="absolute inset-0 flex items-start justify-end rounded-xl p-1.5 text-gold transition hover:bg-gold/5 focus-visible:outline-2 focus-visible:outline-gold"
       >
-        <span className="flex items-center gap-1 rounded-md bg-black/80 px-1.5 py-0.5 font-mono text-[9px] tracking-[0.1em] ring-1 ring-gold/35 backdrop-blur">
+        <span className="flex items-center gap-1 rounded-md bg-black/80 px-1.5 py-0.5 font-mono text-[9px] tracking-[0.1em]ring-1 ring-gold/35">
           <LockIcon className="h-3 w-3" />
           FULL
         </span>

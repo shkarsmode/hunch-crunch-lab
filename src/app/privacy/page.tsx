@@ -7,7 +7,7 @@ const contact = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
 
 export default function Page() {
   return (
-    <article className="mx-auto max-w-2xl px-4 pt-10 text-[15px] leading-relaxed text-ink/60 [&_h2]:mt-9 [&_h2]:text-[20px] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em] [&_h2]:text-ink [&_li]:mt-1.5 [&_p]:mt-3 [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5">
+    <article className="selectable mx-auto max-w-2xl px-4 pt-10 text-[15px] leading-relaxed text-ink/60 [&_h2]:mt-9 [&_h2]:text-[20px] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em] [&_h2]:text-ink [&_li]:mt-1.5 [&_p]:mt-3 [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5">
       <h1 className="headline text-[42px] leading-none text-ink">Privacy</h1>
       <p>Updated October 29, 2026. Short version: we collect as little as we can, we never sell anything, and there are no ads or tracking cookies.</p>
       <h2>What we collect</h2>

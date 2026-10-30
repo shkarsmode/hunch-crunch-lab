@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { Locked, LockIcon, useAccess } from "@/components/access/AccessProvider";
 import type { CrunchyMood } from "@/components/Crunchy";
+import { Icon } from "@/components/ui/icons";
+import { btn } from "@/components/ui/kit";
 import { expectedSwitches, percentile } from "./engine";
 import type { Analysis, Judged, Metric, Tell } from "./engine";
 import { LESSON, realWords } from "./copy";
 import type { Words } from "./copy";
 import FlipPanel from "./FlipPanel";
 import HistChart from "./HistChart";
-import { CheckIcon, CopyIcon, CoinIcon, RepeatIcon } from "./Parts";
+import { CoinIcon } from "./Parts";
 import { EXTRA, Mascot, SEMI, V, u } from "./scene";
 
 function Status({ flagged }: { flagged: boolean }) {
@@ -165,60 +167,52 @@ export function RealPanel({ a, r }: { a: Analysis; r: Judged }) {
   );
 }
 
-function button(primary: boolean): CSSProperties {
-  return {
-    ...EXTRA,
-    width: "100%",
-    height: `max(48px, ${u(150)})`,
-    fontSize: `max(15px, ${u(46)})`,
-    borderRadius: 9999,
-    background: primary ? V.gold : "rgb(12 20 48 / 0.94)",
-    color: primary ? V.ink : V.white,
-    border: primary ? "none" : `${u(3)} solid rgb(169 182 211 / 0.4)`,
-    boxShadow: primary ? `0 0 ${u(44)} rgb(255 201 74 / 0.32)` : `0 0 ${u(32)} rgb(0 0 0 / 0.4)`,
-  };
+/* The one gold action, docked at the bottom once a round is judged. */
+export function NextButton({ onNext }: { onNext: () => void }) {
+  const { unlocked } = useAccess();
+  return (
+    <Locked label="Endless rounds">
+      <button type="button" onClick={onNext} className={btn("primary", "lg", "w-full")}>
+        {unlocked ? "Next round" : "Another round"}
+        <Icon.Arrow size={18} />
+      </button>
+    </Locked>
+  );
 }
 
 type ActionsProps = {
   hasReal: boolean;
   copy: { state: "idle" | "ok" | "fail"; text: string };
-  onNext: () => void;
   onReal: () => void;
   onShare: () => void;
 };
 
-export function Actions({ hasReal, copy, onNext, onReal, onShare }: ActionsProps) {
-  const { unlocked } = useAccess();
+const ghost = btn("ghost", "md", "w-full bg-navy-900/85");
+
+export function Actions({ hasReal, copy, onReal, onShare }: ActionsProps) {
   return (
-    <div className="grid animate-rise [animation-delay:160ms]" style={{ width: u(876), marginLeft: "auto", marginRight: "auto", gap: u(30) }}>
-      <Locked label="Endless rounds">
-        <button type="button" onClick={onNext} className="flex items-center justify-center gap-2 transition active:scale-[0.98]" style={button(true)}>
-          <RepeatIcon />
-          {unlocked ? "Next round" : "Another round"}
-        </button>
-      </Locked>
+    <div className="grid animate-rise gap-2 [animation-delay:160ms]" style={{ width: u(876), marginLeft: "auto", marginRight: "auto" }}>
       <Locked label="Let a real coin play">
-        <button type="button" onClick={onReal} className="flex items-center justify-center gap-2 transition active:scale-[0.98]" style={button(false)}>
-          <CoinIcon />
+        <button type="button" onClick={onReal} className={ghost}>
+          <CoinIcon size={18} />
           {hasReal ? "Flip another real coin" : "Let a real coin play"}
         </button>
       </Locked>
       <Locked label="Copying a share line">
-        <button type="button" onClick={onShare} className="flex items-center justify-center gap-2 transition active:scale-[0.98]" style={button(false)}>
-          {copy.state === "ok" ? <CheckIcon className="h-4 w-4 text-mint" /> : <CopyIcon />}
+        <button type="button" onClick={onShare} className={ghost}>
+          {copy.state === "ok" ? <Icon.Check size={18} className="text-mint" /> : <Icon.Share size={18} />}
           {copy.state === "ok" ? "Copied!" : "Copy share line"}
         </button>
       </Locked>
       {copy.state === "fail" && (
-        <label className="block" style={{ ...SEMI, fontSize: u(34), color: V.muted }}>
-          Copy this line yourself:
+        <label className="enter block rounded-2xl border border-hair bg-navy-850/95 p-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink/45">Copy this line yourself</span>
           <textarea
             readOnly
             value={copy.text}
             rows={3}
             onFocus={(e) => e.currentTarget.select()}
-            className="mt-1 w-full resize-none p-2"
-            style={{ ...SEMI, fontSize: u(36), color: V.white, borderRadius: u(22), background: "rgb(12 20 48 / 0.94)", border: `${u(3)} solid rgb(169 182 211 / 0.4)` }}
+            className="mt-2 block w-full resize-none rounded-lg border border-hair bg-navy-900 p-2.5 text-[13px] leading-snug text-ink outline-none transition focus:border-gold/60"
           />
         </label>
       )}

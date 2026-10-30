@@ -41,7 +41,7 @@ export function SectionLabel({ n, title, right, className = "" }: { n?: string; 
 
 export function Readout({ label, value, tone = "text-ink", className = "" }: { label: string; value: ReactNode; tone?: string; className?: string }) {
   return (
-    <div className={`rounded-md border border-white/10 bg-black/55 px-2 py-1 font-mono leading-tight backdrop-blur-md ${className}`}>
+    <div className={`rounded-md border border-white/10 bg-black/75 px-2 py-1 font-mono leading-tight ${className}`}>
       <div className="text-[9px] tracking-[0.12em] text-ink/45">{label}</div>
       <div className={`text-[13px] tabular-nums ${tone}`}>{value}</div>
     </div>

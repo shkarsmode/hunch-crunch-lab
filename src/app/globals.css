@@ -64,13 +64,40 @@
 html {
   color-scheme: dark;
   background: var(--color-navy-900);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
+/* An app, not a document: taps and drags never select text or pop menus.
+   Fields and long-form text (.selectable) stay selectable. */
 body {
   color: var(--color-ink);
   background: var(--color-navy-900);
   -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+select,
+[contenteditable="true"],
+.selectable,
+.selectable * {
+  -webkit-user-select: text;
+  user-select: text;
+}
+a,
+button,
+summary,
+label,
+[role="button"] {
+  touch-action: manipulation;
+}
+canvas,
+svg,
+img {
+  -webkit-touch-callout: none;
 }
 
 /* A quiet dot grid, brighter near the top, like graph paper under a lamp. */
@@ -143,10 +170,8 @@ body::after {
 }
 
 .glass {
-  background: linear-gradient(180deg, rgb(15 19 28 / 0.94), rgb(10 13 20 / 0.96));
+  background: linear-gradient(180deg, rgb(15 19 28 / 0.98), rgb(10 13 20 / 0.99));
   border: 1px solid rgb(255 255 255 / 0.08);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 @keyframes sheet-up {
@@ -174,8 +199,8 @@ input[type="range"] {
   -webkit-tap-highlight-color: transparent;
 }
 .emblem-shine {
-  animation: emblem-sweep 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  animation-delay: var(--sweep-delay, 1.2s);
+  animation: emblem-sweep-once 1s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: var(--sweep-delay, 0.9s);
 }
 .emblem:hover .emblem-shine,
 .emblem:active .emblem-shine {
@@ -194,8 +219,9 @@ input[type="range"] {
   transform-box: view-box;
   transform-origin: 60px 60px;
 }
-.emblem-holo {
-  animation: emblem-hue 6s linear infinite;
+.emblem:hover .emblem-holo,
+.emblem:active .emblem-holo {
+  animation: emblem-hue 2.4s linear infinite;
 }
 @keyframes emblem-hue {
   to { filter: hue-rotate(360deg); }
@@ -203,7 +229,11 @@ input[type="range"] {
 .emblem-sparkle {
   transform-box: fill-box;
   transform-origin: center;
-  animation: emblem-twinkle 2.4s ease-in-out infinite;
+  opacity: 0.85;
+}
+.emblem:hover .emblem-sparkle,
+.emblem:active .emblem-sparkle {
+  animation: emblem-twinkle 1.6s ease-in-out infinite;
 }
 @keyframes emblem-twinkle {
   0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
@@ -255,17 +285,24 @@ input[type="range"] {
   0%, 100% { translate: 0 0; }
   50% { translate: 0 -6%; }
 }
-@keyframes live-pulse {
-  0% { box-shadow: 0 0 0 0 currentColor; }
-  70% { box-shadow: 0 0 0 6px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
+@keyframes live-ping {
+  0% { transform: scale(1); opacity: 0.55; }
+  80%, 100% { transform: scale(2.8); opacity: 0; }
 }
 .live-dot {
+  position: relative;
   width: 6px;
   height: 6px;
   border-radius: 9999px;
   background: currentColor;
-  animation: live-pulse 1.8s ease-out infinite;
+}
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: live-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 @keyframes enter-up {
   from { opacity: 0; transform: translateY(10px); }
